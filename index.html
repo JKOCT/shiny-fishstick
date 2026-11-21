@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stardust Garden</title>
+
+<!--
+  =====================================================================
+  STARDUST GARDEN — a tiny incremental game
+  =====================================================================
+  This whole game lives in this one file. It has three parts:
+
+    1. <style>   — how things LOOK (colors, sizes, layout)
+    2. <body>    — what is ON the page (buttons, text)
+    3. <script>  — how the game WORKS (numbers, rules, saving)
+
+  To play: double-click this file to open it in your web browser.
+  To change something: edit this file, save, and refresh the browser.
+
+  The easiest place to start tinkering is the "GAME SETTINGS" section
+  near the top of the <script> part below.
+  =====================================================================
+-->
+
+<style>
+  /* ---------- Colors (change these to re-theme the whole game) ---------- */
+  :root {
+    --bg: #14122b;          /* page background */
+    --panel: #221f45;       /* boxes */
+    --panel-hover: #2d2958;
+    --text: #ece9ff;        /* main text */
+    --muted: #a39fcf;       /* dim text */
+    --accent: #ffd36e;      /* stardust gold */
+    --good: #7be0b0;        /* "you can afford it" green */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  .game {
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  /* On narrow screens (phones), stack everything in one column */
+  @media (max-width: 700px) {
+    .game { grid-template-columns: 1fr; }
+  }
+
+  h1 { text-align: center; margin: 8px 0 16px; color: var(--accent); }
+  h2 { margin: 0 0 12px; font-size: 1.1rem; color: var(--muted); }
+
+  .panel {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  /* ---------- The big number and the click button ---------- */
+  .main { text-align: center; align-self: start; }
+  .amount { font-size: 2.4rem; font-weight: 700; color: var(--accent); }
+  .rate { color: var(--muted); margin-bottom: 16px; }
+
+  .star-button {
+    font-size: 5rem;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    border: none;
+    background: radial-gradient(circle, #4b3f9e, #221f45);
+    cursor: pointer;
+    transition: transform 0.08s;
+    user-select: none;
+  }
+  .star-button:hover  { transform: scale(1.05); }
+  .star-button:active { transform: scale(0.94); }
+
+  /* ---------- Shop items ---------- */
+  .shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: var(--panel-hover);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .shop-item.affordable { border-color: var(--good); }
+  .shop-item:disabled   { opacity: 0.45; cursor: not-allowed; }
+  .shop-item .name  { font-weight: 600; }
+  .shop-item .desc  { font-size: 0.85rem; color: var(--muted); }
+  .shop-item .right { text-align: right; white-space: nowrap; }
+  .shop-item .owned { font-size: 1.3rem; font-weight: 700; }
+
+  .footer { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  .footer button {
+    background: none; border: 1px solid var(--muted); color: var(--muted);
+    border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit;
+  }
+
+  /* Little "+1" that floats up when you click */
+  .floater {
+    position: fixed; pointer-events: none;
+    color: var(--accent); font-weight: 700;
+    animation: floatUp 0.8s ease-out forwards;
+  }
+  @keyframes floatUp {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-50px); }
+  }
+</style>
+</head>
+
+<body>
+  <h1>✨ Stardust Garden ✨</h1>
+
+  <div class="game">
+    <!-- Left side: your stardust and the button you click -->
+    <div class="panel main">
+      <div class="amount"><span id="stardust">0</span> stardust</div>
+      <div class="rate"><span id="perSecond">0</span> per second · <span id="perClick">1</span> per click</div>
+      <button class="star-button" id="starButton" aria-label="Gather stardust">⭐</button>
+    </div>
+
+    <!-- Right side: the shop (filled in by the script) -->
+    <div class="panel">
+      <h2>Helpers (make stardust for you)</h2>
+      <div id="helpers"></div>
+      <h2 style="margin-top:16px">Upgrades (make clicks stronger)</h2>
+      <div id="upgrades"></div>
+    </div>
+
+    <div class="footer">
+      Your game saves automatically. &nbsp;
+      <button id="resetButton">Start over</button>
+    </div>
+  </div>
+
+<script>
+/* =====================================================================
+   GAME SETTINGS — the fun part to change!
+   ===================================================================== */
+
+// Helpers produce stardust automatically every second.
+//   cost       = price of the first one
+//   perSecond  = how much stardust ONE of them makes each second
+// Add a new line here to add a new helper to the shop.
+const HELPERS = [
+  { id: "firefly",  name: "Firefly",      emoji: "🪲", cost: 15,     perSecond: 0.1 },
+  { id: "sprout",   name: "Moon Sprout",  emoji: "🌱", cost: 100,    perSecond: 1 },
+  { id: "owl",      name: "Night Owl",    emoji: "🦉", cost: 1100,   perSecond: 8 },
+  { id: "comet",    name: "Tame Comet",   emoji: "☄️", cost: 12000,  perSecond: 47 },
+  { id: "nebula",   name: "Pocket Nebula",emoji: "🌌", cost: 130000, perSecond: 260 },
+];
+
+// Upgrades add to how much stardust each click gives.
+const UPGRADES = [
+  { id: "gloves",  name: "Soft Gloves",     emoji: "🧤", cost: 50,    clickBonus: 1 },
+  { id: "net",     name: "Star Net",        emoji: "🥅", cost: 500,   clickBonus: 5 },
+  { id: "wand",    name: "Silver Wand",     emoji: "🪄", cost: 5000,  clickBonus: 25 },
+];
+
+// Every time you buy something, its price is multiplied by this.
+// 1.15 means "15% more expensive each time". Bigger = harder game.
+const PRICE_GROWTH = 1.15;
+
+// How many stardust you get per click before any upgrades.
+const BASE_CLICK = 1;
+
+
+/* =====================================================================
+   GAME STATE — everything the game needs to remember
+   ===================================================================== */
+
+function newGame() {
+  return {
+    stardust: 0,
+    owned: {},          // e.g. { firefly: 3, sprout: 1 }
+    lastSaved: Date.now(),
+  };
+}
+
+let state = newGame();
+
+
+/* =====================================================================
+   RULES — little functions that calculate things
+   ===================================================================== */
+
+// How many of a thing do I own?
+function howMany(id) {
+  return state.owned[id] || 0;
+}
+
+// What does the NEXT one cost? (price goes up each time you buy)
+function priceOf(item) {
+  return Math.ceil(item.cost * Math.pow(PRICE_GROWTH, howMany(item.id)));
+}
+
+// Total stardust per second from all helpers
+function stardustPerSecond() {
+  let total = 0;
+  for (const h of HELPERS) total += h.perSecond * howMany(h.id);
+  return total;
+}
+
+// Stardust per click
+function stardustPerClick() {
+  let total = BASE_CLICK;
+  for (const u of UPGRADES) total += u.clickBonus * howMany(u.id);
+  return total;
+}
+
+// Try to buy something. Returns true if it worked.
+function buy(item) {
+  const price = priceOf(item);
+  if (state.stardust < price) return false;
+  state.stardust -= price;
+  state.owned[item.id] = howMany(item.id) + 1;
+  return true;
+}
+
+// Turn big numbers into short readable text: 1234567 -> "1.23M"
+function pretty(n) {
+  if (n < 1000) return n < 10 ? n.toFixed(1).replace(".0", "") : Math.floor(n).toString();
+  const units = ["", "K", "M", "B", "T", "Qa", "Qi"];
+  let i = 0;
+  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
+  return n.toFixed(2) + units[i];
+}
+
+
+/* =====================================================================
+   DRAWING THE SHOP — builds a button for every helper and upgrade
+   ===================================================================== */
+
+function makeShopButton(item, container, descText) {
+  const btn = document.createElement("button");
+  btn.className = "shop-item";
+  btn.innerHTML = `
+    <div>
+      <div class="name">${item.emoji} ${item.name}</div>
+      <div class="desc">${descText}</div>
+      <div class="desc">Cost: <span class="price"></span></div>
+    </div>
+    <div class="right"><div class="owned"></div></div>`;
+  btn.addEventListener("click", () => { if (buy(item)) updateScreen(); });
+  container.appendChild(btn);
+  item.button = btn;   // remember the button so we can update it later
+}
+
+for (const h of HELPERS)  makeShopButton(h, document.getElementById("helpers"),  `+${h.perSecond} per second each`);
+for (const u of UPGRADES) makeShopButton(u, document.getElementById("upgrades"), `+${u.clickBonus} per click each`);
+
+
+/* =====================================================================
+   UPDATING THE SCREEN — copies numbers from the state onto the page
+   ===================================================================== */
+
+function updateScreen() {
+  document.getElementById("stardust").textContent  = pretty(state.stardust);
+  document.getElementById("perSecond").textContent = pretty(stardustPerSecond());
+  document.getElementById("perClick").textContent  = pretty(stardustPerClick());
+
+  for (const item of [...HELPERS, ...UPGRADES]) {
+    const price = priceOf(item);
+    const canAfford = state.stardust >= price;
+    item.button.querySelector(".price").textContent = pretty(price);
+    item.button.querySelector(".owned").textContent = howMany(item.id);
+    item.button.disabled = !canAfford;
+    item.button.classList.toggle("affordable", canAfford);
+  }
+}
+
+
+/* =====================================================================
+   CLICKING THE STAR
+   ===================================================================== */
+
+document.getElementById("starButton").addEventListener("click", (event) => {
+  const gained = stardustPerClick();
+  state.stardust += gained;
+  showFloater("+" + pretty(gained), event.clientX, event.clientY);
+  updateScreen();
+});
+
+function showFloater(text, x, y) {
+  const el = document.createElement("div");
+  el.className = "floater";
+  el.textContent = text;
+  el.style.left = (x - 10) + "px";
+  el.style.top  = (y - 20) + "px";
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+
+/* =====================================================================
+   SAVING & LOADING — uses the browser's built-in storage
+   ===================================================================== */
+
+const SAVE_KEY = "stardust-garden-save";
+
+function save() {
+  state.lastSaved = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* saving not allowed here */ }
+}
+
+function load() {
+  try {
+    const text = localStorage.getItem(SAVE_KEY);
+    if (!text) return;
+    state = Object.assign(newGame(), JSON.parse(text));
+
+    // Offline progress: give stardust for the time you were away
+    const secondsAway = (Date.now() - state.lastSaved) / 1000;
+    const earned = stardustPerSecond() * secondsAway;
+    if (earned >= 1) {
+      state.stardust += earned;
+      setTimeout(() => alert(`Welcome back! Your helpers gathered ${pretty(earned)} stardust while you were away.`), 100);
+    }
+  } catch (e) { /* bad or missing save — just start fresh */ }
+}
+
+document.getElementById("resetButton").addEventListener("click", () => {
+  if (confirm("Really start over? You will lose all progress.")) {
+    state = newGame();
+    save();
+    updateScreen();
+  }
+});
+
+
+/* =====================================================================
+   THE GAME LOOP — runs 10 times per second, forever
+   ===================================================================== */
+
+load();
+updateScreen();
+
+let lastTick = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const seconds = (now - lastTick) / 1000;
+  lastTick = now;
+
+  state.stardust += stardustPerSecond() * seconds;
+  updateScreen();
+}, 100);
+
+setInterval(save, 5000);                 // auto-save every 5 seconds
+window.addEventListener("beforeunload", save); // and when you close the tab
+</script>
+</body>
+</html>
