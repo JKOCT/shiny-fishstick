@@ -17,7 +17,7 @@ Open `index.html` in any text editor (Notepad, TextEdit, or VS Code). Look for t
 - change prices (`cost`) and output (`marksPerSecond`, `ideasPerSecond`)
 - add a new person or discovery by copying one and editing it
 - make the game harder or easier with `PRICE_GROWTH`
+- test faster by setting `GAME_SPEED` to 10
 
 Save the file and refresh your browser to see the change.
 To change the colors, edit the values under `:root` near the top of the file.
-- test faster by setting `GAME_SPEED` to 10
