@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stardust Garden</title>
+<title>First Marks</title>
 
 <!--
   =====================================================================
-  STARDUST GARDEN — a tiny incremental game
+  FIRST MARKS — an incremental game about the invention of writing
   =====================================================================
   This whole game lives in this one file. It has three parts:
 
     1. <style>   — how things LOOK (colors, sizes, layout)
-    2. <body>    — what is ON the page (buttons, text)
+    2. <body>    — what is ON the page (boxes, buttons, text)
     3. <script>  — how the game WORKS (numbers, rules, saving)
 
   To play: double-click this file to open it in your web browser.
@@ -26,13 +26,16 @@
 <style>
   /* ---------- Colors (change these to re-theme the whole game) ---------- */
   :root {
-    --bg: #14122b;          /* page background */
-    --panel: #221f45;       /* boxes */
-    --panel-hover: #2d2958;
-    --text: #ece9ff;        /* main text */
-    --muted: #a39fcf;       /* dim text */
-    --accent: #ffd36e;      /* stardust gold */
-    --good: #7be0b0;        /* "you can afford it" green */
+    --bg: #1a1410;          /* page background: dark earth */
+    --panel: #2a211a;       /* boxes */
+    --panel-light: #382c22;
+    --text: #f1e6d6;        /* main text: bone */
+    --muted: #b19f88;       /* dim text */
+    --marks: #e8a65d;       /* ochre — the color of Marks */
+    --ideas: #8fd3e8;       /* pale blue — the color of Ideas */
+    --good: #9bd67a;        /* "you can afford it" green */
+    --rock-1: #5a4a3c;      /* cave wall colors */
+    --rock-2: #3b3029;
   }
 
   * { box-sizing: border-box; }
@@ -42,73 +45,86 @@
     padding: 16px;
     background: var(--bg);
     color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
   }
 
+  h1 { text-align: center; margin: 4px 0 2px; color: var(--marks); letter-spacing: 2px; }
+  .era { text-align: center; color: var(--muted); margin-bottom: 16px; font-style: italic; }
+  h2 { margin: 0 0 10px; font-size: 1.05rem; color: var(--muted); font-weight: normal; }
+
   .game {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.3fr 1fr;
     gap: 16px;
+    align-items: start;
   }
-  /* On narrow screens (phones), stack everything in one column */
-  @media (max-width: 700px) {
+  @media (max-width: 760px) {           /* phones: one column */
     .game { grid-template-columns: 1fr; }
   }
 
-  h1 { text-align: center; margin: 8px 0 16px; color: var(--accent); }
-  h2 { margin: 0 0 12px; font-size: 1.1rem; color: var(--muted); }
+  .panel { background: var(--panel); border-radius: 12px; padding: 14px; }
 
-  .panel {
-    background: var(--panel);
-    border-radius: 12px;
-    padding: 16px;
-  }
+  /* ---------- Resource counters ---------- */
+  .resources { display: flex; gap: 12px; margin-bottom: 12px; }
+  .resource { flex: 1; background: var(--panel-light); border-radius: 10px; padding: 10px; text-align: center; }
+  .resource .big  { font-size: 1.8rem; font-weight: bold; }
+  .resource .small { font-size: 0.85rem; color: var(--muted); }
+  .marks-color { color: var(--marks); }
+  .ideas-color { color: var(--ideas); }
+  .hidden { display: none !important; }
 
-  /* ---------- The big number and the click button ---------- */
-  .main { text-align: center; align-self: start; }
-  .amount { font-size: 2.4rem; font-weight: 700; color: var(--accent); }
-  .rate { color: var(--muted); margin-bottom: 16px; }
-
-  .star-button {
-    font-size: 5rem;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    border: none;
-    background: radial-gradient(circle, #4b3f9e, #221f45);
-    cursor: pointer;
-    transition: transform 0.08s;
+  /* ---------- The cave wall you click ---------- */
+  .wall {
+    position: relative;
+    height: 340px;
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: crosshair;
     user-select: none;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.06), transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.35), transparent 60%),
+      linear-gradient(135deg, var(--rock-1), var(--rock-2));
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.7);
   }
-  .star-button:hover  { transform: scale(1.05); }
-  .star-button:active { transform: scale(0.94); }
+  .wall-hint {
+    position: absolute; inset: auto 0 10px 0; text-align: center;
+    color: rgba(255,255,255,0.45); font-size: 0.9rem; pointer-events: none;
+  }
+  /* One carved symbol on the wall */
+  .glyph {
+    position: absolute;
+    color: rgba(240, 215, 180, 0.75);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.6), -1px -1px 0 rgba(255,255,255,0.08);
+    filter: grayscale(1) sepia(0.6) brightness(1.1);  /* makes emoji look carved */
+    pointer-events: none;
+    animation: carve 0.4s ease-out;
+  }
+  @keyframes carve { from { opacity: 0; transform: scale(1.6); } }
 
-  /* ---------- Shop items ---------- */
+  /* ---------- Shop buttons (people + discoveries) ---------- */
   .shop-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    gap: 12px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
-    border: 2px solid transparent;
-    border-radius: 10px;
-    background: var(--panel-hover);
-    color: var(--text);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    width: 100%; padding: 9px 12px; margin-bottom: 8px;
+    border: 2px solid transparent; border-radius: 10px;
+    background: var(--panel-light); color: var(--text);
+    font: inherit; text-align: left; cursor: pointer;
   }
   .shop-item.affordable { border-color: var(--good); }
-  .shop-item:disabled   { opacity: 0.45; cursor: not-allowed; }
-  .shop-item .name  { font-weight: 600; }
-  .shop-item .desc  { font-size: 0.85rem; color: var(--muted); }
-  .shop-item .right { text-align: right; white-space: nowrap; }
-  .shop-item .owned { font-size: 1.3rem; font-weight: 700; }
+  .shop-item:disabled   { opacity: 0.5; cursor: not-allowed; }
+  .shop-item.done       { opacity: 0.6; cursor: default; border-color: transparent; }
+  .shop-item .name  { font-weight: bold; }
+  .shop-item .desc  { font-size: 0.82rem; color: var(--muted); }
+  .shop-item .owned { font-size: 1.3rem; font-weight: bold; min-width: 2ch; text-align: right; }
 
-  .footer { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  /* ---------- Story log ---------- */
+  .log { margin-top: 12px; max-height: 160px; overflow-y: auto; font-size: 0.9rem; }
+  .log p { margin: 0 0 6px; color: var(--muted); }
+  .log p:first-child { color: var(--text); }
+
+  .footer { max-width: 1100px; margin: 16px auto 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
   .footer button {
     background: none; border: 1px solid var(--muted); color: var(--muted);
     border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit;
@@ -116,40 +132,53 @@
 
   /* Little "+1" that floats up when you click */
   .floater {
-    position: fixed; pointer-events: none;
-    color: var(--accent); font-weight: 700;
+    position: fixed; pointer-events: none; font-weight: bold; color: var(--marks);
     animation: floatUp 0.8s ease-out forwards;
   }
-  @keyframes floatUp {
-    from { opacity: 1; transform: translateY(0); }
-    to   { opacity: 0; transform: translateY(-50px); }
-  }
+  @keyframes floatUp { to { opacity: 0; transform: translateY(-45px); } }
 </style>
 </head>
 
 <body>
-  <h1>✨ Stardust Garden ✨</h1>
+  <h1>FIRST MARKS</h1>
+  <div class="era" id="eraName"></div>
 
   <div class="game">
-    <!-- Left side: your stardust and the button you click -->
-    <div class="panel main">
-      <div class="amount"><span id="stardust">0</span> stardust</div>
-      <div class="rate"><span id="perSecond">0</span> per second · <span id="perClick">1</span> per click</div>
-      <button class="star-button" id="starButton" aria-label="Gather stardust">⭐</button>
-    </div>
-
-    <!-- Right side: the shop (filled in by the script) -->
+    <!-- LEFT: resources, the cave wall, and the story -->
     <div class="panel">
-      <h2>Helpers (make stardust for you)</h2>
-      <div id="helpers"></div>
-      <h2 style="margin-top:16px">Upgrades (make clicks stronger)</h2>
-      <div id="upgrades"></div>
+      <div class="resources">
+        <div class="resource">
+          <div class="big marks-color" id="marks">0</div>
+          <div class="small">marks · <span id="marksPerSecond">0</span>/sec</div>
+        </div>
+        <div class="resource hidden" id="ideasBox">
+          <div class="big ideas-color" id="ideas">0</div>
+          <div class="small">ideas · <span id="ideasPerSecond">0</span>/sec</div>
+        </div>
+      </div>
+
+      <div class="wall" id="wall">
+        <div class="wall-hint" id="wallHint">Click the cave wall to carve a mark</div>
+      </div>
+
+      <div class="log" id="log"></div>
     </div>
 
-    <div class="footer">
-      Your game saves automatically. &nbsp;
-      <button id="resetButton">Start over</button>
+    <!-- RIGHT: the people who join you, and the discoveries -->
+    <div>
+      <div class="panel">
+        <h2>People (carve marks for you)</h2>
+        <div id="people"></div>
+      </div>
+      <div class="panel hidden" id="discoveriesPanel" style="margin-top:16px">
+        <h2>Discoveries (spend ideas)</h2>
+        <div id="discoveries"></div>
+      </div>
     </div>
+  </div>
+
+  <div class="footer">
+    Your game saves automatically. &nbsp; <button id="resetButton">Start over</button>
   </div>
 
 <script>
@@ -157,31 +186,86 @@
    GAME SETTINGS — the fun part to change!
    ===================================================================== */
 
-// Helpers produce stardust automatically every second.
-//   cost       = price of the first one
-//   perSecond  = how much stardust ONE of them makes each second
-// Add a new line here to add a new helper to the shop.
-const HELPERS = [
-  { id: "firefly",  name: "Firefly",      emoji: "🪲", cost: 15,     perSecond: 0.1 },
-  { id: "sprout",   name: "Moon Sprout",  emoji: "🌱", cost: 100,    perSecond: 1 },
-  { id: "owl",      name: "Night Owl",    emoji: "🦉", cost: 1100,   perSecond: 8 },
-  { id: "comet",    name: "Tame Comet",   emoji: "☄️", cost: 12000,  perSecond: 47 },
-  { id: "nebula",   name: "Pocket Nebula",emoji: "🌌", cost: 130000, perSecond: 260 },
+// PEOPLE who join you and carve on their own.
+//   cost            = marks needed for the first one (it gets pricier each time)
+//   marksPerSecond  = marks ONE of them carves each second
+//   ideasPerSecond  = ideas ONE of them comes up with each second
+//   needs           = which discovery must happen before they appear ("" = none)
+const PEOPLE = [
+  { id: "child",       name: "Curious Child", emoji: "🧒", cost: 15,      marksPerSecond: 0.2,  ideasPerSecond: 0.05, needs: "",
+    joinText: "A curious child watches you, then picks up a sharp stone too." },
+  { id: "hunter",      name: "Hunter",        emoji: "🏹", cost: 100,     marksPerSecond: 1,    ideasPerSecond: 0,    needs: "",
+    joinText: "A hunter starts scratching a line for every animal caught." },
+  { id: "elder",       name: "Elder",         emoji: "🧓", cost: 400,     marksPerSecond: 2,    ideasPerSecond: 0.25, needs: "",
+    joinText: "An elder sits by the wall and wonders what the marks could mean." },
+  { id: "storyteller", name: "Storyteller",   emoji: "🗣️", cost: 2000,    marksPerSecond: 8,    ideasPerSecond: 1,    needs: "pictograms",
+    joinText: "A storyteller begins painting the tales told around the fire." },
+  { id: "scribe",      name: "Scribe",        emoji: "✍️", cost: 25000,   marksPerSecond: 50,   ideasPerSecond: 6,    needs: "syllables",
+    joinText: "The first scribe dedicates their whole life to writing." },
+  { id: "teacher",     name: "Teacher",       emoji: "🧑‍🏫", cost: 300000,  marksPerSecond: 300,  ideasPerSecond: 35,   needs: "alphabet",
+    joinText: "A teacher gathers children to learn the letters." },
+  { id: "copyist",     name: "Copyist",       emoji: "📜", cost: 4000000, marksPerSecond: 2000, ideasPerSecond: 220,  needs: "papyrus",
+    joinText: "Copyists begin duplicating scrolls so ideas can travel." },
 ];
 
-// Upgrades add to how much stardust each click gives.
-const UPGRADES = [
-  { id: "gloves",  name: "Soft Gloves",     emoji: "🧤", cost: 50,    clickBonus: 1 },
-  { id: "net",     name: "Star Net",        emoji: "🥅", cost: 500,   clickBonus: 5 },
-  { id: "wand",    name: "Silver Wand",     emoji: "🪄", cost: 5000,  clickBonus: 25 },
+// DISCOVERIES you buy with ideas, in order. Each one can boost things:
+//   clickBoost  = multiplies marks per click
+//   marksBoost  = multiplies marks from people
+//   ideasBoost  = multiplies ideas from people
+//   glyphs      = the symbols that appear on the cave wall from this era on
+const DISCOVERIES = [
+  { id: "tally", name: "Tally Marks", emoji: "𝍷", cost: 2, clickBoost: 2,
+    desc: "Clicks carve twice as much.",
+    era: "The Age of Counting",
+    story: "Someone realizes five scratches can mean five deer. Counting is born!",
+    glyphs: ["|", "||", "|||", "||||", "𝍸"] },
+  { id: "pictograms", name: "Pictograms", emoji: "🐂", cost: 25, marksBoost: 1.5,
+    desc: "Pictures stand for things. People carve 50% more. Storytellers can join.",
+    era: "The Age of Pictures",
+    story: "A drawing of an ox now means 'ox'. The wall starts telling stories.",
+    glyphs: ["🐂", "🐟", "☀️", "🌾", "🏹", "👁️", "🌙", "🐍", "✋"] },
+  { id: "ideograms", name: "Ideograms", emoji: "☯", cost: 150, marksBoost: 2, clickBoost: 2,
+    desc: "Symbols stand for ideas, not just things. Everything carves 2× more.",
+    era: "The Age of Symbols",
+    story: "A sun with legs means 'day'. Symbols can now hold ideas.",
+    glyphs: ["☉", "☽", "☯", "⚶", "♒", "✶", "⌘", "⚘"] },
+  { id: "syllables", name: "Syllables", emoji: "🗨️", cost: 800, ideasBoost: 2,
+    desc: "Symbols stand for sounds. Ideas come 2× faster. Scribes can join.",
+    era: "The Age of Sounds",
+    story: "Someone writes a name by its sounds. Now anything spoken can be written!",
+    glyphs: ["ka", "mu", "ri", "to", "sa", "ne", "lo", "pi"] },
+  { id: "alphabet", name: "Alphabet", emoji: "🔤", cost: 4000, marksBoost: 2, clickBoost: 3,
+    desc: "A few letters can write every word. Teachers can join.",
+    era: "The Age of Letters",
+    story: "Just a couple dozen letters can write every word. Anyone can learn!",
+    glyphs: ["A", "B", "Γ", "Δ", "E", "Z", "H", "K", "M", "N", "Ω", "R"] },
+  { id: "papyrus", name: "Ink & Papyrus", emoji: "🪶", cost: 40000, ideasBoost: 3,
+    desc: "Writing leaves the cave. Ideas come 3× faster. Copyists can join.",
+    era: "The Age of Scrolls",
+    story: "Reeds become paper, soot becomes ink. Writing can be carried anywhere.",
+    glyphs: ["SUN", "RIVER", "BREAD", "HOME", "STAR", "KING", "SEED", "WE"] },
+  { id: "library", name: "The Great Library", emoji: "🏛️", cost: 500000, marksBoost: 3, ideasBoost: 3, clickBoost: 3,
+    desc: "All knowledge in one place. Everything 3× stronger.",
+    era: "The Age of Memory",
+    story: "A great library rises. Your people will never forget again. 🏛️ You have completed the story, for now!",
+    glyphs: ["WE REMEMBER", "KNOW", "WORDS", "TELL", "LEARN", "WRITE"] },
 ];
 
-// Every time you buy something, its price is multiplied by this.
+// Every time you hire a person, their price is multiplied by this.
 // 1.15 means "15% more expensive each time". Bigger = harder game.
 const PRICE_GROWTH = 1.15;
 
-// How many stardust you get per click before any upgrades.
+// Marks per click before any discoveries.
 const BASE_CLICK = 1;
+
+// The symbols carved before any discovery: simple scratches.
+const FIRST_GLYPHS = ["|", "/", "\\", "—", "×", "⌒"];
+
+// Ideas start showing up once you have carved this many marks in total.
+const IDEAS_APPEAR_AT = 10;
+
+// Speed of the whole game. Set to 10 to test things quickly. Normal = 1.
+const GAME_SPEED = 1;
 
 
 /* =====================================================================
@@ -190,8 +274,12 @@ const BASE_CLICK = 1;
 
 function newGame() {
   return {
-    stardust: 0,
-    owned: {},          // e.g. { firefly: 3, sprout: 1 }
+    marks: 0,
+    ideas: 0,
+    totalMarks: 0,       // all marks ever carved (never goes down)
+    people: {},          // e.g. { child: 3, hunter: 1 }
+    discovered: {},      // e.g. { tally: true }
+    log: [],             // story messages
     lastSaved: Date.now(),
   };
 }
@@ -203,42 +291,58 @@ let state = newGame();
    RULES — little functions that calculate things
    ===================================================================== */
 
-// How many of a thing do I own?
-function howMany(id) {
-  return state.owned[id] || 0;
+function howMany(id)      { return state.people[id] || 0; }
+function hasDiscovered(id){ return id === "" || !!state.discovered[id]; }
+
+// Price of the next person of this kind
+function priceOf(person) {
+  return Math.ceil(person.cost * Math.pow(PRICE_GROWTH, howMany(person.id)));
 }
 
-// What does the NEXT one cost? (price goes up each time you buy)
-function priceOf(item) {
-  return Math.ceil(item.cost * Math.pow(PRICE_GROWTH, howMany(item.id)));
+// Multiply together a boost from every discovery you've made
+function totalBoost(kind) {
+  let boost = 1;
+  for (const d of DISCOVERIES) {
+    if (hasDiscovered(d.id) && d[kind]) boost *= d[kind];
+  }
+  return boost;
 }
 
-// Total stardust per second from all helpers
-function stardustPerSecond() {
+function marksPerSecond() {
   let total = 0;
-  for (const h of HELPERS) total += h.perSecond * howMany(h.id);
-  return total;
+  for (const p of PEOPLE) total += p.marksPerSecond * howMany(p.id);
+  return total * totalBoost("marksBoost");
 }
 
-// Stardust per click
-function stardustPerClick() {
-  let total = BASE_CLICK;
-  for (const u of UPGRADES) total += u.clickBonus * howMany(u.id);
-  return total;
+function ideasPerSecond() {
+  let total = 0;
+  for (const p of PEOPLE) total += p.ideasPerSecond * howMany(p.id);
+  return total * totalBoost("ideasBoost");
 }
 
-// Try to buy something. Returns true if it worked.
-function buy(item) {
-  const price = priceOf(item);
-  if (state.stardust < price) return false;
-  state.stardust -= price;
-  state.owned[item.id] = howMany(item.id) + 1;
-  return true;
+function marksPerClick() {
+  return BASE_CLICK * totalBoost("clickBoost");
+}
+
+// The next discovery you haven't made yet (or undefined if all done)
+function nextDiscovery() {
+  return DISCOVERIES.find(d => !hasDiscovered(d.id));
+}
+
+// The most recent discovery you HAVE made (decides the era + wall symbols)
+function latestDiscovery() {
+  return [...DISCOVERIES].reverse().find(d => hasDiscovered(d.id));
+}
+
+function addMarks(amount) {
+  state.marks += amount;
+  state.totalMarks += amount;
 }
 
 // Turn big numbers into short readable text: 1234567 -> "1.23M"
 function pretty(n) {
-  if (n < 1000) return n < 10 ? n.toFixed(1).replace(".0", "") : Math.floor(n).toString();
+  if (n < 10)   return (Math.floor(n * 10) / 10).toString();
+  if (n < 1000) return Math.floor(n).toString();
   const units = ["", "K", "M", "B", "T", "Qa", "Qi"];
   let i = 0;
   while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
@@ -247,56 +351,57 @@ function pretty(n) {
 
 
 /* =====================================================================
-   DRAWING THE SHOP — builds a button for every helper and upgrade
+   STORY LOG
    ===================================================================== */
 
-function makeShopButton(item, container, descText) {
-  const btn = document.createElement("button");
-  btn.className = "shop-item";
-  btn.innerHTML = `
-    <div>
-      <div class="name">${item.emoji} ${item.name}</div>
-      <div class="desc">${descText}</div>
-      <div class="desc">Cost: <span class="price"></span></div>
-    </div>
-    <div class="right"><div class="owned"></div></div>`;
-  btn.addEventListener("click", () => { if (buy(item)) updateScreen(); });
-  container.appendChild(btn);
-  item.button = btn;   // remember the button so we can update it later
+function tell(text) {
+  state.log.unshift(text);
+  state.log = state.log.slice(0, 30);   // keep the 30 newest
+  drawLog();
 }
 
-for (const h of HELPERS)  makeShopButton(h, document.getElementById("helpers"),  `+${h.perSecond} per second each`);
-for (const u of UPGRADES) makeShopButton(u, document.getElementById("upgrades"), `+${u.clickBonus} per click each`);
-
-
-/* =====================================================================
-   UPDATING THE SCREEN — copies numbers from the state onto the page
-   ===================================================================== */
-
-function updateScreen() {
-  document.getElementById("stardust").textContent  = pretty(state.stardust);
-  document.getElementById("perSecond").textContent = pretty(stardustPerSecond());
-  document.getElementById("perClick").textContent  = pretty(stardustPerClick());
-
-  for (const item of [...HELPERS, ...UPGRADES]) {
-    const price = priceOf(item);
-    const canAfford = state.stardust >= price;
-    item.button.querySelector(".price").textContent = pretty(price);
-    item.button.querySelector(".owned").textContent = howMany(item.id);
-    item.button.disabled = !canAfford;
-    item.button.classList.toggle("affordable", canAfford);
-  }
+function drawLog() {
+  document.getElementById("log").innerHTML = state.log.map(t => `<p>${t}</p>`).join("");
 }
 
 
 /* =====================================================================
-   CLICKING THE STAR
+   THE CAVE WALL — symbols appear where marks are carved
    ===================================================================== */
 
-document.getElementById("starButton").addEventListener("click", (event) => {
-  const gained = stardustPerClick();
-  state.stardust += gained;
+const wall = document.getElementById("wall");
+const MAX_GLYPHS = 160;   // oldest symbols fade away after this many
+
+function currentGlyphs() {
+  const d = latestDiscovery();
+  return d ? d.glyphs : FIRST_GLYPHS;
+}
+
+// Carve one symbol at x%, y% (random if not given)
+function carveGlyph(xPercent, yPercent) {
+  const options = currentGlyphs();
+  const g = document.createElement("div");
+  g.className = "glyph";
+  g.textContent = options[Math.floor(Math.random() * options.length)];
+  g.style.left = (xPercent ?? Math.random() * 92) + "%";
+  g.style.top  = (yPercent ?? Math.random() * 85) + "%";
+  g.style.fontSize = (14 + Math.random() * 18) + "px";
+  g.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 30 - 15}deg)`;
+  wall.appendChild(g);
+
+  const all = wall.querySelectorAll(".glyph");
+  if (all.length > MAX_GLYPHS) all[0].remove();
+}
+
+wall.addEventListener("click", (event) => {
+  const box = wall.getBoundingClientRect();
+  const x = (event.clientX - box.left) / box.width * 100;
+  const y = (event.clientY - box.top) / box.height * 100;
+  const gained = marksPerClick();
+  addMarks(gained);
+  carveGlyph(x, y);
   showFloater("+" + pretty(gained), event.clientX, event.clientY);
+  document.getElementById("wallHint").classList.add("hidden");
   updateScreen();
 });
 
@@ -304,10 +409,111 @@ function showFloater(text, x, y) {
   const el = document.createElement("div");
   el.className = "floater";
   el.textContent = text;
-  el.style.left = (x - 10) + "px";
-  el.style.top  = (y - 20) + "px";
+  el.style.left = (x + 8) + "px";
+  el.style.top  = (y - 24) + "px";
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 800);
+}
+
+
+/* =====================================================================
+   BUILDING THE SHOP BUTTONS
+   ===================================================================== */
+
+function makeButton(container, onClick) {
+  const btn = document.createElement("button");
+  btn.className = "shop-item";
+  btn.addEventListener("click", onClick);
+  container.appendChild(btn);
+  return btn;
+}
+
+for (const p of PEOPLE) {
+  p.button = makeButton(document.getElementById("people"), () => {
+    const price = priceOf(p);
+    if (state.marks < price) return;
+    state.marks -= price;
+    if (howMany(p.id) === 0) tell(`${p.emoji} ${p.joinText}`);
+    state.people[p.id] = howMany(p.id) + 1;
+    updateScreen();
+  });
+  let what = `+${p.marksPerSecond} marks/sec`;
+  if (p.ideasPerSecond) what += `, +${p.ideasPerSecond} ideas/sec`;
+  p.button.innerHTML = `
+    <div>
+      <div class="name">${p.emoji} ${p.name}</div>
+      <div class="desc">${what} each</div>
+      <div class="desc">Costs <span class="price"></span> marks</div>
+    </div>
+    <div class="owned"></div>`;
+}
+
+for (const d of DISCOVERIES) {
+  d.button = makeButton(document.getElementById("discoveries"), () => {
+    if (hasDiscovered(d.id) || d !== nextDiscovery() || state.ideas < d.cost) return;
+    state.ideas -= d.cost;
+    state.discovered[d.id] = true;
+    tell(`${d.emoji} <b>${d.name}!</b> ${d.story}`);
+    for (let i = 0; i < 6; i++) carveGlyph();   // show off the new symbols
+    updateScreen();
+  });
+}
+
+
+/* =====================================================================
+   UPDATING THE SCREEN — copies numbers from the state onto the page
+   ===================================================================== */
+
+function updateScreen() {
+  document.getElementById("marks").textContent          = pretty(state.marks);
+  document.getElementById("marksPerSecond").textContent = pretty(marksPerSecond());
+  document.getElementById("ideas").textContent          = pretty(state.ideas);
+  document.getElementById("ideasPerSecond").textContent = pretty(ideasPerSecond());
+
+  const latest = latestDiscovery();
+  document.getElementById("eraName").textContent = latest ? latest.era : "The Age of Scratches";
+
+  // Ideas + discoveries appear after the first few marks
+  const ideasVisible = state.totalMarks >= IDEAS_APPEAR_AT;
+  document.getElementById("ideasBox").classList.toggle("hidden", !ideasVisible);
+  document.getElementById("discoveriesPanel").classList.toggle("hidden", !ideasVisible);
+
+  // People: only show the ones whose discovery has happened
+  for (const p of PEOPLE) {
+    const price = priceOf(p);
+    const canAfford = state.marks >= price;
+    p.button.classList.toggle("hidden", !hasDiscovered(p.needs));
+    p.button.querySelector(".price").textContent = pretty(price);
+    p.button.querySelector(".owned").textContent = howMany(p.id);
+    p.button.disabled = !canAfford;
+    p.button.classList.toggle("affordable", canAfford);
+  }
+
+  // Discoveries: done ones get a ✔, the next one is buyable, later ones are a mystery
+  const next = nextDiscovery();
+  for (const d of DISCOVERIES) {
+    const done = hasDiscovered(d.id);
+    const isNext = d === next;
+    const canAfford = isNext && state.ideas >= d.cost;
+    d.button.classList.toggle("done", done);
+    d.button.classList.toggle("affordable", canAfford);
+    d.button.disabled = !canAfford && !done;
+
+    let html;
+    if (done || isNext) {
+      html = `
+        <div>
+          <div class="name">${d.emoji} ${d.name}</div>
+          <div class="desc">${d.desc}</div>
+          ${done ? "" : `<div class="desc">Costs ${pretty(d.cost)} ideas</div>`}
+        </div>
+        <div class="owned">${done ? "✔" : ""}</div>`;
+    } else {
+      html = `<div><div class="name">❓ ???</div><div class="desc">Not yet imagined…</div></div>`;
+    }
+    // Only redraw the button if its text changed (so clicks aren't lost)
+    if (d.lastHtml !== html) { d.button.innerHTML = html; d.lastHtml = html; }
+  }
 }
 
 
@@ -315,7 +521,7 @@ function showFloater(text, x, y) {
    SAVING & LOADING — uses the browser's built-in storage
    ===================================================================== */
 
-const SAVE_KEY = "stardust-garden-save";
+const SAVE_KEY = "first-marks-save";
 
 function save() {
   state.lastSaved = Date.now();
@@ -325,22 +531,28 @@ function save() {
 function load() {
   try {
     const text = localStorage.getItem(SAVE_KEY);
-    if (!text) return;
+    if (!text) return false;
     state = Object.assign(newGame(), JSON.parse(text));
 
-    // Offline progress: give stardust for the time you were away
-    const secondsAway = (Date.now() - state.lastSaved) / 1000;
-    const earned = stardustPerSecond() * secondsAway;
-    if (earned >= 1) {
-      state.stardust += earned;
-      setTimeout(() => alert(`Welcome back! Your helpers gathered ${pretty(earned)} stardust while you were away.`), 100);
+    // Offline progress: your people kept working while you were away
+    const secondsAway = (Date.now() - state.lastSaved) / 1000 * GAME_SPEED;
+    const marksEarned = marksPerSecond() * secondsAway;
+    const ideasEarned = ideasPerSecond() * secondsAway;
+    if (marksEarned >= 1) {
+      addMarks(marksEarned);
+      state.ideas += ideasEarned;
+      tell(`🌙 While you were away, your people carved ${pretty(marksEarned)} marks and had ${pretty(ideasEarned)} ideas.`);
     }
-  } catch (e) { /* bad or missing save — just start fresh */ }
+    return true;
+  } catch (e) { return false; }   // bad save — start fresh
 }
 
 document.getElementById("resetButton").addEventListener("click", () => {
   if (confirm("Really start over? You will lose all progress.")) {
     state = newGame();
+    wall.querySelectorAll(".glyph").forEach(g => g.remove());
+    document.getElementById("wallHint").classList.remove("hidden");
+    tell("🔥 A lone figure sits in a dark cave, holding a sharp stone…");
     save();
     updateScreen();
   }
@@ -351,21 +563,38 @@ document.getElementById("resetButton").addEventListener("click", () => {
    THE GAME LOOP — runs 10 times per second, forever
    ===================================================================== */
 
-load();
+if (!load()) tell("🔥 A lone figure sits in a dark cave, holding a sharp stone…");
+drawLog();
+if (state.totalMarks > 0) {
+  document.getElementById("wallHint").classList.add("hidden");
+  for (let i = 0; i < Math.min(60, state.totalMarks); i++) carveGlyph();
+}
 updateScreen();
 
+let ideasAnnounced = state.totalMarks >= IDEAS_APPEAR_AT;
 let lastTick = Date.now();
+
 setInterval(() => {
   const now = Date.now();
-  const seconds = (now - lastTick) / 1000;
+  const seconds = (now - lastTick) / 1000 * GAME_SPEED;
   lastTick = now;
 
-  state.stardust += stardustPerSecond() * seconds;
+  const newMarks = marksPerSecond() * seconds;
+  addMarks(newMarks);
+  state.ideas += ideasPerSecond() * seconds;
+
+  // People carving also shows up on the wall (a little, so it doesn't flood)
+  if (Math.random() < Math.min(0.6, newMarks / 3)) carveGlyph();
+
+  if (!ideasAnnounced && state.totalMarks >= IDEAS_APPEAR_AT) {
+    ideasAnnounced = true;
+    tell("💡 Looking at the marks, you get a strange feeling… could they <i>mean</i> something? (Ideas unlocked! Curious children and elders will help you think.)");
+  }
   updateScreen();
 }, 100);
 
-setInterval(save, 5000);                 // auto-save every 5 seconds
-window.addEventListener("beforeunload", save); // and when you close the tab
+setInterval(save, 5000);                        // auto-save every 5 seconds
+window.addEventListener("beforeunload", save);  // and when you close the tab
 </script>
 </body>
 </html>
