@@ -6,81 +6,86 @@
 <title>Summer's Town</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#2b1d14;--parch:#f6e7c8;--parch2:#e3c995;--hi:#fff7e4;--sel:#ffe08a;--bad:#c0392b}
+:root{--ink:#2b1d14;--parch:#f6e7c8;--parch2:#e3c995;--hi:#fff7e4;--sel:#ffe08a;--bad:#c0392b;--muted:#7a5c40}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#24361f;font-family:'Press Start 2P',monospace;color:var(--ink);-webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
 canvas{display:block;image-rendering:pixelated;cursor:pointer}
+button{font:inherit;color:var(--ink)}
+button:focus-visible{outline:2px solid #fff;outline-offset:1px}
 .panel{background:var(--parch);border:3px solid var(--ink);box-shadow:inset -3px -3px 0 var(--parch2),inset 3px 3px 0 var(--hi),0 3px 0 rgba(0,0,0,.35)}
-#top{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;pointer-events:none}
-#top>*{pointer-events:auto}
-#left{display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:calc(100% - 190px)}
-#res{display:flex;gap:6px 12px;padding:7px 10px;font-size:10px;align-items:center;flex-wrap:wrap}
-#jobs{padding:6px 8px;font-size:8px;min-width:190px}
-.jh{all:unset;display:flex;justify-content:space-between;width:100%;cursor:pointer;padding:2px 0 6px;font-size:9px}
-.jh:focus-visible{outline:2px solid var(--ink)}
-#jobs.closed #jlist{display:none}#jobs.closed .jh{padding-bottom:2px}
-.job{display:grid;grid-template-columns:22px 1fr 22px 26px 22px;align-items:center;gap:4px;padding:2px 0}
-.job img{width:20px;height:20px;image-rendering:pixelated}
-.jb{width:22px;height:22px;font:inherit;font-size:11px;padding:0;background:var(--parch);border:2px solid var(--ink);color:var(--ink);cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2)}
-.jb:active{transform:translateY(1px)}.jb:disabled{opacity:.35;cursor:default}
-.jc{text-align:center;font-size:10px}
-#hungry{color:var(--bad);padding-top:4px;min-height:1em}
-@media (max-width:600px){.sq{width:32px;height:32px}#btns{gap:4px}#res{font-size:8px}.r img{width:16px!important;height:16px!important}#left{max-width:calc(100% - 180px)}#jobs{min-width:170px}}
-.r{display:flex;align-items:center;gap:6px}
-.r img{width:20px;height:20px;image-rendering:pixelated}
-#btns{display:flex;gap:6px}
-.sq{width:38px;height:38px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer;padding:0}
-.sq:active{transform:translateY(2px)}
-#bar{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:6px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
-#bar::-webkit-scrollbar{display:none}
-.tool{position:relative;flex:0 0 auto;width:74px;min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:6px 2px 5px;background:var(--parch);border:3px solid var(--ink);font:inherit;font-size:7px;color:var(--ink);cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2),inset 2px 2px 0 var(--hi)}
-.tool img{height:32px;image-rendering:pixelated}
-.tool.sel{background:var(--sel);transform:translateY(-4px)}
-.tool .cost{display:flex;gap:3px;align-items:center;font-size:7px}
-.tool .cost img{height:12px}
-.tool .cost.bad{color:var(--bad)}
-.tool kbd{position:absolute;top:2px;left:3px;font:inherit;font-size:6px;opacity:.55}
-.tool.done{opacity:.45}
-#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:104px;font-size:9px;line-height:1.7;padding:8px 14px;width:max-content;max-width:min(560px,calc(100% - 32px));text-align:center;transition:opacity .4s}
-#hint.hide{opacity:0;pointer-events:none}
-#help{position:fixed;top:60px;right:8px;width:min(330px,calc(100% - 16px));font-size:8px;line-height:1.9;padding:12px 14px;display:none}
-#help.show{display:block}
-#help b{color:#a0461f}
-#mini{position:fixed;top:56px;right:8px;width:192px;height:144px;image-rendering:pixelated;padding:0;cursor:crosshair}
+/* top-left: one panel for stock + jobs */
+#town{position:fixed;top:8px;left:8px;padding:8px 10px;display:flex;flex-direction:column;gap:8px;font-size:9px;max-width:calc(100% - 70px)}
+#res{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
+.r{display:flex;align-items:center;gap:5px}
+.r img{width:18px;height:18px;image-rendering:pixelated}
+.r[hidden]{display:none}
+#jobs{border-top:2px dashed var(--parch2);padding-top:6px;display:flex;flex-direction:column;gap:3px}
+.job{display:grid;grid-template-columns:18px 52px 20px 20px 20px;align-items:center;gap:5px;font-size:8px}
+.job img{width:18px;height:18px;image-rendering:pixelated}
+.jb{width:20px;height:20px;font-size:10px;padding:0;background:var(--parch);border:2px solid var(--ink);cursor:pointer;line-height:1}
+.jb:active{transform:translateY(1px)}.jb:disabled{opacity:.3;cursor:default}
+.jc{text-align:center;font-size:9px}
+#jfoot{font-size:7px;color:var(--muted)}#jfoot.bad{color:var(--bad)}
+/* top-right: menu */
+#menuB{position:fixed;top:8px;right:8px;width:38px;height:38px;font-size:14px;padding:0;cursor:pointer}
+#menu{position:fixed;top:54px;right:8px;width:min(280px,calc(100% - 16px));padding:10px 12px;font-size:8px;line-height:1.8;display:flex;flex-direction:column;gap:8px}
+#menu[hidden]{display:none}
+.mrow{display:flex;gap:6px;flex-wrap:wrap}
+.mb{padding:6px 8px;font-size:8px;background:var(--parch);border:2px solid var(--ink);cursor:pointer}
+.mb:active{transform:translateY(1px)}
+#menu b{color:#a0461f}
+#helptxt{border-top:2px dashed var(--parch2);padding-top:6px}
+#mini{position:fixed;top:54px;right:8px;width:160px;height:120px;image-rendering:pixelated;padding:0;cursor:crosshair}
 #mini[hidden]{display:none}
+/* bottom: three tools + build tray */
+#bar{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px}
+.tool{width:64px;height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:2px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2),inset 2px 2px 0 var(--hi)}
+.tool img{height:24px;image-rendering:pixelated}
+.tool.sel{background:var(--sel)}
+#tray{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
+#tray[hidden]{display:none}
+#tray::-webkit-scrollbar{display:none}
+.bb{flex:0 0 auto;width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 2px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer}
+.bb img{height:28px;image-rendering:pixelated}
+.bb.sel{background:var(--sel)}
+.bb .cost{display:flex;gap:3px;align-items:center}
+.bb .cost img{height:11px}
+.bb .cost.bad{color:var(--bad)}
+.bb:disabled{opacity:.4;cursor:default}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;font-size:8px;line-height:1.7;padding:6px 10px;width:max-content;max-width:min(440px,calc(100% - 32px));text-align:center;transition:opacity .5s;cursor:pointer}
+#hint.hide{opacity:0;pointer-events:none}
+body.tray #hint{bottom:166px}
+@media (prefers-reduced-motion:reduce){#hint{transition:none}}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="top">
-  <div id="left">
-    <div id="res" class="panel"></div>
-    <div id="jobs" class="panel">
-      <button id="jh" class="jh" aria-expanded="true"><span>Jobs</span><span id="idle"></span></button>
-      <div id="jlist"></div>
-    </div>
-  </div>
-  <div id="btns">
-    <button class="sq panel" id="zout" title="Zoom out">-</button>
-    <button class="sq panel" id="zin" title="Zoom in">+</button>
-    <button class="sq panel" id="mapb" title="Minimap">▦</button>
-    <button class="sq panel" id="snd" title="Sound">♪</button>
-    <button class="sq panel" id="hlp" title="Help">?</button>
-  </div>
+<div id="town" class="panel">
+  <div id="res"></div>
+  <div id="jobs"><div id="jlist"></div><div id="jfoot"></div></div>
 </div>
-<div id="help" class="panel">
-  <b>Jobs</b>: use + and - to put villagers to work: chopping, mining, fishing or cooking<br>
-  <b>Food</b>: work and walking make villagers hungry. Fishers catch fish, cooks turn them into meals<br>
-  <b>Build</b>: pick a building and tap to place it. Villagers build it<br>
-  <b>Remove</b>: tap a site, road or building to take it down<br>
-  <b>Look around</b>: drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap<br>
-  <b>Zoom</b>: wheel, pinch, or +/-<br>
-  <b>Pet Little Wolf</b>: tap them with Look<br>
-  <b>Keys</b>: 1-7 tools, Esc = Look, M = mute<br>
-  <button class="panel" id="reset" style="margin-top:8px;font:inherit;font-size:8px;padding:6px 8px;cursor:pointer">New map</button>
+<button id="menuB" class="panel" title="Menu" aria-expanded="false" aria-controls="menu">☰</button>
+<div id="menu" class="panel" hidden>
+  <div class="mrow">
+    <button class="mb" id="snd">Sound: on</button>
+    <button class="mb" id="mapb">Map: off</button>
+  </div>
+  <div class="mrow">
+    <button class="mb" id="zout">Zoom -</button>
+    <button class="mb" id="zin">Zoom +</button>
+  </div>
+  <div id="helptxt">
+    <b>Jobs</b>: + and - put villagers to work<br>
+    <b>Food</b>: fishers catch, cooks make meals. Hungry villagers slow down<br>
+    <b>Build</b>: pick a building, tap to place. Villagers build it<br>
+    <b>Look</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
+    <b>Little Wolf</b>: tap them with Look for pets
+  </div>
+  <div class="mrow"><button class="mb" id="reset">New map</button></div>
 </div>
-<canvas id="mini" class="panel" title="Tap to jump there"></canvas>
-<div id="hint" class="panel"></div>
+<canvas id="mini" class="panel" title="Tap to jump there" hidden></canvas>
+<div id="hint" class="panel" title="Tap to hide"></div>
+<div id="tray" class="panel" hidden></div>
 <div id="bar" class="panel"></div>
 
 <script>
@@ -651,9 +656,9 @@ function centerOnFire(){const f=fire();centerOn(f.x+1,f.y+1)}
 const keys={};
 addEventListener('keydown',e=>{
   ensureAudio();const k=e.key.toLowerCase();keys[k]=true;
-  if(k==='escape')setTool('look');if(k==='m')toggleMute();
+  if(k==='escape'){setTool('look');closeMenus()}if(k==='m')toggleMute();
   if(k==='+'||k==='=')zoomTo(zoomT*1.2);if(k==='-')zoomTo(zoomT/1.2);
-  const n=parseInt(k);if(n>=1&&n<=TOOLS.length)setTool(TOOLS[n-1].id);
+  if(k==='1')setTool('look');if(k==='2')toggleTray();if(k==='3')setTool('remove');
   if(k.startsWith('arrow'))e.preventDefault();
 });
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
@@ -696,7 +701,6 @@ function removeDrag(w,first){const t=toTile(w),i=t.y*W+t.x;if(!inb(t.x,t.y)||i==
 
 // minimap
 const mini=document.getElementById('mini'),mctx=mini.getContext('2d');mini.width=W;mini.height=H;const mimg=mctx.createImageData(W,H);
-if(innerWidth<700)mini.hidden=true;
 const MCOL={water:[75,143,208],sand:[230,210,147],grass:[116,182,90],road:[196,165,116],tree:[47,107,58],rock:[139,143,154],stump:[150,170,90],build:[194,85,62],fire:[255,170,60]};
 function drawMini(){
   if(mini.hidden)return;const d=mimg.data;
@@ -711,50 +715,60 @@ mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect();cen
   const mv=ev=>{centerOn((ev.clientX-r.left)/r.width*W,(ev.clientY-r.top)/r.height*H);drawMini()};mini.setPointerCapture(e.pointerId);mini.onpointermove=mv;mini.onpointerup=()=>{mini.onpointermove=null}});
 
 // ================= UI =================
-const TOOLS=[
-  {id:'look',name:'Look',icon:ICON.hand,tip:'Drag to look around. Tap Little Wolf to pet them'},
-  {id:'remove',name:'Remove',icon:ICON.x,tip:'Tap a site, road or building to take it down'},
-  {id:'house',icon:BSPR.house},{id:'store',icon:BSPR.store},{id:'bench',icon:BSPR.bench},{id:'dog',icon:BSPR.dog},{id:'road',icon:ROAD}
-];
-const bar=document.getElementById('bar');
-const iconURL={};for(const k of[...RES.map(r=>r[0]),'folk'])iconURL[k]=ICON[k].toDataURL();
+const BUILDS=['house','store','bench','dog','road'];
+const bIcon={house:BSPR.house,store:BSPR.store,bench:BSPR.bench,dog:BSPR.dog,road:ROAD};
+const iconURL={};for(const k of RES.map(r=>r[0]))iconURL[k]=ICON[k].toDataURL();
 function costHTML(c){return Object.entries(c).map(([k,v])=>`${v}<img src="${iconURL[k]}" alt="${k}">`).join(' ')}
-TOOLS.forEach((t,k)=>{
-  const d=BUILD[t.id],b=document.createElement('button');b.className='tool';b.dataset.id=t.id;b.title=d?d.tip:t.tip;
-  b.innerHTML=`<kbd>${k+1}</kbd><img src="${t.icon.toDataURL()}" alt=""><span>${d?d.name:t.name}</span>`+(d?`<span class="cost">${costHTML(d.cost)}</span>`:'');
-  b.addEventListener('click',()=>{ensureAudio();setTool(tool===t.id&&t.id!=='look'?'look':t.id)});bar.appendChild(b);
-});
-function setTool(id){tool=id;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));cv.style.cursor=id==='look'?'grab':'crosshair'}
+const bar=document.getElementById('bar'),tray=document.getElementById('tray');
+const buildIconURL=BSPR.house.toDataURL();
+bar.innerHTML=`<button class="tool" data-t="look" title="Look around (1)"><img src="${ICON.hand.toDataURL()}" alt=""><span>Look</span></button>`+
+  `<button class="tool" data-t="build" title="Build (2)"><img id="buildImg" src="${buildIconURL}" alt=""><span>Build</span></button>`+
+  `<button class="tool" data-t="remove" title="Remove a site, road or building (3)"><img src="${ICON.x.toDataURL()}" alt=""><span>Remove</span></button>`;
+tray.innerHTML=BUILDS.map(id=>{const d=BUILD[id];return`<button class="bb" data-b="${id}" title="${d.tip}"><img src="${bIcon[id].toDataURL()}" alt=""><span>${d.name}</span><span class="cost">${costHTML(d.cost)}</span></button>`}).join('');
+bar.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b)return;ensureAudio();const t=b.dataset.t;if(t==='build')toggleTray();else{setTool(t);closeTray()}});
+tray.addEventListener('click',e=>{const b=e.target.closest('.bb');if(!b||b.disabled)return;ensureAudio();setTool(b.dataset.b);closeTray()});
+function toggleTray(){if(tray.hidden){tray.hidden=false;document.body.classList.add('tray')}else closeTray();hud();syncSel()}
+function closeTray(){tray.hidden=true;document.body.classList.remove('tray');syncSel()}
+function syncSel(){
+  const building=!!BUILD[tool];
+  bar.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.t==='build'?(building||!tray.hidden):b.dataset.t===tool&&tray.hidden));
+  tray.querySelectorAll('.bb').forEach(b=>b.classList.toggle('sel',b.dataset.b===tool));
+  document.getElementById('buildImg').src=building?bIcon[tool].toDataURL():buildIconURL;
+}
+function setTool(id){tool=id;syncSel();cv.style.cursor=id==='look'?'grab':'crosshair'}
 const resEl=document.getElementById('res');
-resEl.innerHTML=RES.map(([k,n])=>`<div class="r" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('')+`<div class="r" title="Villagers"><img src="${iconURL.folk}" alt="Villagers"><span id="n-folk">0</span></div>`;
+resEl.innerHTML=RES.map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
 const jlist=document.getElementById('jlist');
-jlist.innerHTML=JOBS.map(j=>`<div class="job"><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer ${j.name.toLowerCase()}ers">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More ${j.name.toLowerCase()}ers">+</button></div>`).join('')+'<div id="hungry"></div>';
+jlist.innerHTML=JOBS.map(j=>`<div class="job"><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer on ${j.name}">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More on ${j.name}">+</button></div>`).join('');
 jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
-const jobsEl=document.getElementById('jobs');
-document.getElementById('jh').onclick=()=>{jobsEl.classList.toggle('closed');document.getElementById('jh').setAttribute('aria-expanded',!jobsEl.classList.contains('closed'))};
-if(innerWidth<600&&innerHeight<700)jobsEl.classList.add('closed');
+// menu
+const menu=document.getElementById('menu'),menuB=document.getElementById('menuB'),mapB=document.getElementById('mapb');
+function placeMini(){mini.style.top=menu.hidden?'54px':(menu.getBoundingClientRect().bottom+8)+'px'}
+menuB.onclick=()=>{ensureAudio();menu.hidden=!menu.hidden;menuB.setAttribute('aria-expanded',!menu.hidden);placeMini()};
+function closeMenus(){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini();closeTray()}
+cv.addEventListener('pointerdown',()=>{if(!menu.hidden){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini()}},true);
 document.getElementById('zin').onclick=()=>zoomTo(zoomT*1.25);
 document.getElementById('zout').onclick=()=>zoomTo(zoomT/1.25);
-document.getElementById('mapb').onclick=()=>{mini.hidden=!mini.hidden;drawMini()};
+mapB.onclick=()=>{mini.hidden=!mini.hidden;mapB.textContent='Map: '+(mini.hidden?'off':'on');placeMini();drawMini()};
+if(innerWidth>=900){mini.hidden=false;mapB.textContent='Map: on'}
 const sndB=document.getElementById('snd');
-function toggleMute(){muted=!muted;sndB.textContent=muted?'×':'♪'}
+function toggleMute(){muted=!muted;sndB.textContent='Sound: '+(muted?'off':'on')}
 sndB.onclick=()=>{ensureAudio();toggleMute()};
-document.getElementById('hlp').onclick=()=>document.getElementById('help').classList.toggle('show');
 const resetB=document.getElementById('reset');let resetArm=0;
 resetB.onclick=()=>{
   if(Date.now()-resetArm>3000){resetArm=Date.now();resetB.textContent='Tap again to erase town';setTimeout(()=>{resetB.textContent='New map'},3000);return}
-  resetArm=0;resetB.textContent='New map';newGame();save();hud();document.getElementById('help').classList.remove('show')};
+  resetArm=0;resetB.textContent='New map';newGame();save();hud();closeMenus()};
 function hud(){
-  for(const[k]of RES)document.getElementById('n-'+k).textContent=S.res[k];
-  document.getElementById('n-folk').textContent=folk.length;
+  for(const[k]of RES){document.getElementById('n-'+k).textContent=S.res[k];
+    if(k==='copper'||k==='coal')document.getElementById('r-'+k).hidden=S.res[k]===0}
   const idle=folk.filter(v=>v.job==='idle').length;
-  document.getElementById('idle').textContent='Idle '+idle;
   for(const j of JOBS)document.getElementById('jc-'+j.id).textContent=folk.filter(v=>v.job===j.id).length;
   jlist.querySelectorAll('.jb').forEach(b=>{b.disabled=+b.dataset.d>0?idle===0:!folk.some(v=>v.job===b.dataset.j)});
   const hungry=folk.filter(v=>v.food<=0).length,low=folk.filter(v=>v.food>0&&v.food<HUNGRY_AT).length;
-  document.getElementById('hungry').textContent=hungry?`${hungry} starving! Need food`:low&&S.res.meal+S.res.fish===0?`${low} hungry, no food left`:'';
-  document.querySelectorAll('.tool').forEach(b=>{const d=BUILD[b.dataset.id];if(!d)return;
-    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.classList.toggle('done',!!(d.once&&count(b.dataset.id,false)))});
+  const jf=document.getElementById('jfoot'),warn=hungry?`${hungry} starving!`:low&&S.res.meal+S.res.fish===0?'No food left':'';
+  jf.textContent=warn||(idle?`${idle} idle`:'Everyone is busy');jf.classList.toggle('bad',!!warn);
+  if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
+    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.disabled=!!(d.once&&count(id,false))});
 }
 const HINTS=[
   'Tap + next to a job to put villagers to work. Try Chop and Mine!',
@@ -765,13 +779,13 @@ const HINTS=[
   'Little Wolf would love a Doghouse to nap in...',
   'Your little town is growing!'
 ];
-const hintEl=document.getElementById('hint');let hintShown=-1,hintT=0;
+const hintEl=document.getElementById('hint');hintEl.onclick=()=>hintEl.classList.add('hide');let hintShown=-1,hintT=0;
 function checkHint(){
   const adv=[folk.some(v=>v.job!=='idle'), (S.cooked||0)>0, count('house')>0, count('store',false)>0||count('bench',false)>0,
     count('bench')>0, count('dog')>0, false][S.step];
   if(adv&&S.step<HINTS.length-1)S.step++;
   if(hintShown!==S.step){hintShown=S.step;hintEl.textContent=HINTS[S.step];hintEl.classList.remove('hide');hintT=0}
-  if(S.step===HINTS.length-1&&hintT>6)hintEl.classList.add('hide');
+  if(hintT>(S.step===HINTS.length-1?5:14))hintEl.classList.add('hide');
 }
 
 // ================= save / load =================
