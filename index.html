@@ -1287,13 +1287,13 @@ function checkHint(){
 // ================= save / load =================
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
-  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,pol:S.polishTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,fe:S.firstEel||0,eT:{at:S.eelAt!=null?Math.max(0,S.eelAt-time):null,fa:S.firstEelAt!=null?Math.max(0,S.firstEelAt-time):null,nx:eelNext?Math.max(0,eelNext-time):null},quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,pol:S.polishTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
   folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
     b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0,mt:b.eggs.mt||[],ft:b.eggs.ft||[],mx:b.eggs.mx||{},fx:b.eggs.fx||{},fo:b.eggs.focus||null,mn:b.eggs.mname||null,fn:b.eggs.fname||null}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
-    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,gem:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,polishTip:d.pol||0,firstBaby:d.fb||null,pearlT:d.pt||0,pearlTip:d.ptip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,gem:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,firstEel:d.fe!=null?d.fe:(d.eel>=1&&(d.pieces||d.quest)?1:0),quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,polishTip:d.pol||0,firstBaby:d.fb||null,pearlT:d.pt||0,pearlTip:d.ptip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
   const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
@@ -1302,6 +1302,7 @@ function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3
   if(!S.found.length)S.found=[...new Set(folk.flatMap(v=>v.traits))];
   for(const[b,ow,eg]of pend){if(ow!=null&&ow>=0&&folk[ow])b.owner=folk[ow].id;
     if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2,mm:!!eg.mm,fm:!!eg.fm,mt:eg.mt||[],ft:eg.ft||[],mx:eg.mx||{},fx:eg.fx||{},focus:eg.fo||null,mname:eg.mn||m.name,fname:eg.fn||null};m.state='brood';m.job='idle'}}
+  if(d.eT){if(d.eT.at!=null)S.eelAt=time+d.eT.at;if(d.eT.fa!=null)S.firstEelAt=time+d.eT.fa;if(d.eT.nx!=null)eelNext=time+d.eT.nx}
   resetActors();if(d.cam){cam.x=d.cam[0];cam.y=d.cam[1];clampCam()}else centerOnFire();return true}catch(e){return false}}
 addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 addEventListener('pagehide',save);
@@ -1323,10 +1324,15 @@ function eelStep(){
   if(S.eel===undefined)S.eel=0;
   if(S.arriving){if(folk.some(o=>o.arr)){eelRender();return}S.arriving=false} // the eel countdown starts once everyone has found each other
   if(S.eel===0){if(S.eelAt===undefined)S.eelAt=time+30;
-    if(time>=S.eelAt){if(count('house')>=grownUps())S.eel=2;else{S.eel=1;eelShowAt=time+1.6;rumbleT=3;freezeT=3.2;eelRumble();after(1.7,eelRender)}}}
+    if(time>=S.eelAt){if(count('house')>=grownUps())S.eel=2;else{S.eel=1;if(S.firstEelAt==null)S.firstEelAt=time+90;eelShowAt=time+1.6;rumbleT=3;freezeT=3.2;eelRumble();after(1.7,eelRender)}}}
   else if(S.eel===1&&count('house')>=grownUps()){S.eel=2;sfx('done');const f=fire();addFloat((f.x+1)*T,f.y*T-14,'Everyone has a den! Eels cannot reach you inside',null,'#fff6c8',4.5)}
   else if(S.eel===2&&count('house')<grownUps()){S.eel=1;eelShowAt=time}
-  if(S.eel>=1){if(!eelNext)eelNext=time+180;if(time>=eelNext&&!eels.length&&freezeT<=0){eelNext=time+180+rnd()*60;eelAttack()}}else eelNext=0;
+  if(!S.firstEel&&S.eel>=1&&!eels.length&&freezeT<=0){ // the first eel strikes before every den is built: when one den short, or 90s after the warning
+    const short=grownUps()-count('house'),exposed=folk.some(v=>adult(v)&&!breeding(v)&&v.state!=='away'&&!(denOf(v)&&denOf(v).done));
+    if(S.firstEelAt==null)S.firstEelAt=time+90;
+    if(exposed&&(short===1||time>=S.firstEelAt)){S.firstEel=1;eelNext=time+180+rnd()*60;eelAttack(true)}}
+  else if(S.eel>=1&&S.firstEel){if(!eelNext)eelNext=time+180;if(time>=eelNext&&!eels.length&&freezeT<=0){eelNext=time+180+rnd()*60;eelAttack()}}
+  else if(S.eel<1)eelNext=0;
   eelRender();
 }
 // ----- building tips, privacy toast, hold-to-remove, work spacing -----
@@ -1367,14 +1373,14 @@ function drawHold(){if(!holdInfo)return;const b=bAt(holdInfo.i),p=Math.min(1,(ti
   ctx.fillStyle='rgba(224,83,61,'+(.12+.28*p)+')';ctx.fillRect(x,y,w,h);ctx.fillStyle='#e0533d';ctx.fillRect(x,y+h+2,Math.round(w*p),2)}
 // ----- eel attacks: octopuses with a den hide inside; one without a den may be caught -----
 let eels=[],eelNext=0;
-function eelAttack(){
+function eelAttack(first){
   const live=folk.filter(v=>v.state!=='brood'&&!v.eel&&v.state!=='away');
   const housed=live.filter(v=>denOf(v)&&denOf(v).done&&!breeding(v));
   const prey=live.filter(v=>adult(v)&&!breeding(v)&&!(denOf(v)&&denOf(v).done));
   for(const v of housed)if(onScreen(v))addFloat(v.x*T,v.y*T-26,'!',null,'#ffb4a8',1.5);
   after(1.4,()=>{for(const v of housed){if(!folk.includes(v)||v.eel||breeding(v))continue;const d=denOf(v);if(!d||!d.done)continue;dropTask(v);v.eel={ph:'go',t:5};if(!goDen(v,d)){v.eel.ph='hid';v.hidden=true}}});
   const victim=folk.length>2&&prey.length?prey[rnd()*prey.length|0]:null;
-  if(victim)eels.push({v:victim,t:-4,x:0,y:0,started:false,trail:[],ph:'in',dir:rnd()<.5?1:-1,out:0});
+  if(victim)eels.push({first:!!first,v:victim,t:-4,x:0,y:0,started:false,trail:[],ph:'in',dir:rnd()<.5?1:-1,out:0});
   toast(victim?'An eel is circling! Octopuses without a den are in danger!':housed.length?'An eel passed by. Everyone with a den hid safely!':'An eel passed by.');
   rumbleT=1.6;eelRumble();if(AC&&!muted){try{tone(880,660,.18,'square',.04);tone(880,660,.18,'square',.04,.25)}catch(e){}}
 }
@@ -1388,7 +1394,7 @@ function catchVictim(e){
   const v=e.v;e.ph='out';e.out=0;if(!folk.includes(v))return;
   if(denOf(v)&&denOf(v).done){addFloat(v.x*T,v.y*T-26,'The eel missed '+v.name+'!',null,'#fff6c8',3.5);return}
   rumbleT=.5;
-  if(!v.lost&&rnd()<.5){ // the first time, an octopus may lose a tentacle and swim away
+  if(e.first||(!v.lost&&rnd()<.5)){ // the very first eel always lets its victim escape; after that, a first catch is 50/50
     v.lost=rnd()<.5?1:2;v.sadUntil=time+60;dropTask(v);v.eel={ph:'flee',t:1,dir:-e.dir};v.face=-e.dir;
     burst(v.x*T,v.y*T-8,14,[v.col,shade(v.col,.75),'#ffffff']);parts.push({x:v.x*T+e.dir*4,y:v.y*T-6,vx:e.dir*26,vy:-34,g:160,life:1.3,max:1.3,col:v.col,sz:3});sfx('no');
     addFloat(v.x*T,v.y*T-26,v.name+' lost a tentacle but got away!',null,'#ffd9a8',4.5);hud();return}
