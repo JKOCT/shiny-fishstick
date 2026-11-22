@@ -25,6 +25,10 @@ button:focus-visible{outline:2px solid #fff;outline-offset:1px}
 .jb{width:20px;height:20px;font-size:10px;padding:0;background:var(--parch);border:2px solid var(--ink);cursor:pointer;line-height:1}
 .jb:active{transform:translateY(1px)}.jb:disabled{opacity:.3;cursor:default}
 .jc{text-align:center;font-size:9px}
+#jtog{all:unset;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:8px;padding:1px 0 3px}
+#jtog:focus-visible{outline:2px solid var(--ink)}
+#jbody{display:flex;flex-direction:column;gap:3px}
+#jobs.min #jbody{display:none}#jobs.min #jtog{padding-bottom:0}
 #jfoot{font-size:7px;color:var(--muted)}#jfoot.bad{color:var(--bad)}
 /* top-right: menu */
 #menuB{position:fixed;top:8px;right:8px;width:38px;height:38px;font-size:14px;padding:0;cursor:pointer}
@@ -85,7 +89,7 @@ body.noted #hint{display:none}
 <canvas id="c"></canvas>
 <div id="town" class="panel">
   <div id="res"></div>
-  <div id="jobs"><div id="jlist"></div><div id="jfoot"></div><button class="mb" id="evoB" title="Choose which traits your octopuses evolve"><span id="evoT">Evolution · Gen 1</span><span class="pts" id="evoP" hidden>1</span></button></div>
+  <div id="jobs"><button id="jtog" aria-expanded="true" aria-controls="jbody" title="Show or hide jobs"><span>Jobs</span><span id="jarr">▾</span></button><div id="jbody"><div id="jlist"></div><div id="jfoot"></div><button class="mb" id="evoB" title="Choose which traits your octopuses evolve"><span id="evoT">Evolution · Gen 1</span><span class="pts" id="evoP" hidden>1</span></button></div></div>
 </div>
 <button id="menuB" class="panel" title="Menu" aria-expanded="false" aria-controls="menu">☰</button>
 <div id="menu" class="panel" hidden>
@@ -866,7 +870,10 @@ function syncSel(){
 function setTool(id){tool=id;syncSel();cv.style.cursor=id==='look'?'grab':'crosshair'}
 const resEl=document.getElementById('res');
 resEl.innerHTML=RES.map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
-const jlist=document.getElementById('jlist');
+const jlist=document.getElementById('jlist'),jobsBox=document.getElementById('jobs'),jtog=document.getElementById('jtog');
+function setJobsMin(m){jobsBox.classList.toggle('min',m);jtog.setAttribute('aria-expanded',!m);document.getElementById('jarr').textContent=m?'\u25b8':'\u25be';try{localStorage.setItem(KEY+'-jobsmin',m?'1':'0')}catch(e){}}
+jtog.onclick=()=>{setJobsMin(!jobsBox.classList.contains('min'));hud()};
+try{if(localStorage.getItem(KEY+'-jobsmin')==='1')setJobsMin(true)}catch(e){}
 jlist.innerHTML=JOBS.map(j=>`<div class="job"><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer on ${j.name}">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More on ${j.name}">+</button></div>`).join('');
 jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
 // menu
@@ -896,6 +903,7 @@ function hud(){
   const jf=document.getElementById('jfoot'),warn=hungry?`${hungry} starving!`:low&&S.res.meal+S.res.fish===0?'No food left':'';
   jf.textContent=warn||((idle?`${idle} idle`:'Everyone is busy')+(growing?` · ${growing} growing`:''));jf.classList.toggle('bad',!!warn);
   renderInfo();checkBreedNote();
+  jtog.querySelector('span').textContent=jobsBox.classList.contains('min')?('Jobs \u00b7 '+(jf.classList.contains('bad')?jf.textContent:(idle?idle+' idle':'busy'))+(S.points>0?' \u00b7 \u2605'+S.points:'')):'Jobs';
   document.getElementById('evoT').textContent='Evolution \u00b7 Gen '+colonyGen();const ep=document.getElementById('evoP');ep.hidden=!(S.points>0);ep.textContent=S.points||0;
   if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
     b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.disabled=!!(d.once&&count(id,false))});
