@@ -362,6 +362,13 @@ const BSPR={
     R(1,11,14,7,INK);R(2,11,12,6,'#8a96a0');R(2,11,12,2,'#a9b4bd');R(2,16,12,1,'#6c7882');
     R(3,8,5,3,INK);R(4,8,3,2,'#e8dcc0');R(4,8,1,1,'#ffffff');
     R(10,6,1,5,'#a8713f');R(9,5,3,2,INK);R(10,5,1,1,'#9aa6b1');R(12,9,2,2,'#f2a7b5')}),
+  rake:bcanvas(16,20,(R)=>{ // Mussel rake: a shell-toothed rake leaning on a little mussel pile
+    R(2,15,12,4,INK);R(3,15,10,3,'#c2b588');R(4,15,2,2,'#1f2638');R(7,16,2,1,'#3b4a6b');R(10,15,2,2,'#1f2638');R(5,17,1,1,'#3b4a6b');
+    R(9,2,2,13,INK);R(10,2,1,12,'#a8713f');R(4,1,9,3,INK);R(5,2,7,1,'#e8dcc0');for(const x of[5,7,9,11])R(x,3,1,2,'#fff4dc');R(12,7,2,2,'#f2a7b5')}),
+  grill:bcanvas(16,20,(R)=>{ // Hot stone: a flat stone over a glowing crack, mussels sizzling on top
+    R(1,13,14,6,INK);R(2,13,12,5,'#5e6270');R(2,13,12,1,'#8b8f9a');R(4,16,8,1,'#ff7a3a');R(6,17,4,1,'#ffd56b');
+    R(2,10,12,3,INK);R(3,10,10,2,'#9aa6b1');R(4,8,3,2,INK);R(5,8,1,1,'#3b4a6b');R(9,8,3,2,INK);R(10,8,1,1,'#3b4a6b');
+    R(6,4,1,3,'#dff6ff');R(9,3,1,3,'#dff6ff');R(7,2,1,2,'#dff6ff')}),
   dog:bcanvas(16,20,(R)=>{ // Crab shell: a roomy spare shell
     for(let r=0;r<12;r++){const y=6+r,half=Math.min(7,1+Math.round(r*.9)),x0=8-half,x1=8+half;R(x0,y,x1-x0,1,INK);if(x1-x0>2)R(x0+1,y,x1-x0-2,1,r%3===0?'#c99a5e':'#f3d6a8')}
     R(7,4,2,2,INK);R(8,6,4,1,'#c99a5e');R(6,9,5,1,'#c99a5e');R(4,12,8,1,'#c99a5e');
@@ -452,6 +459,8 @@ const BUILD={
   house:{name:'Den',w:2,h:2,cost:{stone:20,wood:10},hits:36,tip:'A cozy den built from shells. Each female claims one and lays her eggs there'},
   store:{name:'Clam cache',w:2,h:2,cost:{wood:20,stone:10},hits:20,tip:'Another drop-off point, so fewer long trips'},
   bench:{name:'Tool rock',w:1,h:1,cost:{wood:10,stone:6},hits:10,once:true,tip:'Sharper tools: everyone works 50% faster'},
+  rake:{name:'Mussel rake',w:1,h:1,cost:{wood:30,stone:30},hits:12,once:true,tip:'Foragers find mussels 50% faster'},
+  grill:{name:'Hot stone',w:1,h:1,cost:{wood:30,stone:30},hits:12,once:true,tip:'Cooks cook 50% faster'},
   dog:{name:'Crab shell',w:1,h:1,cost:{wood:6},hits:6,once:true,tip:'A roomy spare shell for your hermit crab to nap in'},
   road:{name:'Path',w:1,h:1,cost:{stone:1},tip:'A pebble path. Octopuses move faster on it. Drag to paint'}
 };
@@ -763,7 +772,7 @@ function updFolk(v,dt){
   if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
   drain(v,dt*(.5+.5*v.size)); // everyone gets hungry over time, even when resting
   let work=(hasBench()?1.5:1)*(v.food<=0?.5:1)*(has(v,'tools')?1+.2*tp(v):1);const st=v.state;
-  if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);
+  if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);if(k==='fish'&&count('rake'))work*=1.5;if(k==='cook'&&count('grill'))work*=1.5;
     if(has(v,'social')&&folk.some(o=>o!==v&&o.state==='work'&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<4))work*=1.2}
   if(v.food<=0)v.xp.hungry+=dt;
   if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
@@ -1019,8 +1028,8 @@ mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect();cen
   const mv=ev=>{centerOn((ev.clientX-r.left)/r.width*W,(ev.clientY-r.top)/r.height*H);drawMini()};mini.setPointerCapture(e.pointerId);mini.onpointermove=mv;mini.onpointerup=()=>{mini.onpointermove=null}});
 
 // ================= UI =================
-const BUILDS=['house','store','bench','dog','road'];
-const bIcon={house:BSPR.house,store:BSPR.store,bench:BSPR.bench,dog:BSPR.dog,road:ROAD};
+const BUILDS=['house','store','bench','rake','grill','dog','road'];
+const bIcon={house:BSPR.house,store:BSPR.store,bench:BSPR.bench,rake:BSPR.rake,grill:BSPR.grill,dog:BSPR.dog,road:ROAD};
 const iconURL={};for(const k of RES.map(r=>r[0]))iconURL[k]=ICON[k].toDataURL();
 function costHTML(c){return Object.entries(c).map(([k,v])=>`${v}<img src="${iconURL[k]}" alt="${k}">`).join(' ')}
 const bar=document.getElementById('bar'),tray=document.getElementById('tray');
@@ -1336,7 +1345,7 @@ function eelStep(){
   eelRender();
 }
 // ----- building tips, privacy toast, hold-to-remove, work spacing -----
-const BTIP={house:'A shell den. Every octopus claims one to hide in, and females lay their eggs in theirs. Keep dens spaced apart.',store:'Another drop-off point, so octopuses make shorter trips with their goods.',bench:'Everyone works 50% faster. You only need one.',dog:'A roomy spare shell where your hermit crab can nap. You only need one.',road:'A pebble path. Octopuses swim faster on it. Drag to paint.',fire:'The warm vent. Goods are dropped off here and cooks bake meals on it.'};
+const BTIP={rake:'A shell-toothed rake. Foragers find mussels 50% faster. You only need one.',grill:'A hot stone over the vent heat. Cooks cook 50% faster. You only need one.',house:'A shell den. Every octopus claims one to hide in, and females lay their eggs in theirs. Keep dens spaced apart.',store:'Another drop-off point, so octopuses make shorter trips with their goods.',bench:'Everyone works 50% faster. You only need one.',dog:'A roomy spare shell where your hermit crab can nap. You only need one.',road:'A pebble path. Octopuses swim faster on it. Drag to paint.',fire:'The warm vent. Goods are dropped off here and cooks bake meals on it.'};
 const btipEl=document.createElement('div');btipEl.id='btip';btipEl.className='panel';btipEl.hidden=true;
 btipEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;width:max-content;max-width:min(420px,calc(100% - 32px));padding:8px 10px;font-size:8px;line-height:1.8;text-align:center;z-index:4';
 document.body.appendChild(btipEl);
@@ -1378,17 +1387,17 @@ function eelAttack(first){
   const housed=live.filter(v=>denOf(v)&&denOf(v).done&&!breeding(v));
   const prey=live.filter(v=>adult(v)&&!breeding(v)&&!(denOf(v)&&denOf(v).done));
   for(const v of housed)if(onScreen(v))addFloat(v.x*T,v.y*T-26,'!',null,'#ffb4a8',1.5);
-  after(1.4,()=>{for(const v of housed){if(!folk.includes(v)||v.eel||breeding(v))continue;const d=denOf(v);if(!d||!d.done)continue;dropTask(v);v.eel={ph:'go',t:5};if(!goDen(v,d)){v.eel.ph='hid';v.hidden=true}}});
+  after(.2,()=>{for(const v of housed){if(!folk.includes(v)||v.eel||breeding(v))continue;const d=denOf(v);if(!d||!d.done)continue;dropTask(v);v.eel={ph:'go',t:2.5};if(!goDen(v,d)){v.eel.ph='hid';v.hidden=true}}});
   const victim=folk.length>2&&prey.length?prey[rnd()*prey.length|0]:null;
-  if(victim)eels.push({first:!!first,v:victim,t:-4,x:0,y:0,started:false,trail:[],ph:'in',dir:rnd()<.5?1:-1,out:0});
+  if(victim)eels.push({first:!!first,v:victim,t:-5,x:0,y:0,started:false,trail:[],ph:'in',dir:rnd()<.5?1:-1,out:0});
   toast(victim?'An eel is circling! Octopuses without a den are in danger!':housed.length?'An eel passed by. Everyone with a den hid safely!':'An eel passed by.');
   rumbleT=1.6;eelRumble();if(AC&&!muted){try{tone(880,660,.18,'square',.04);tone(880,660,.18,'square',.04,.25)}catch(e){}}
 }
 function updEelHide(v,dt){
   const e=v.eel;v.anim+=dt;
-  if(e.ph==='go'){v.anim+=dt*2;const r=followPath(v,dt,8);if(r===true||r==='blocked'){e.ph='hid';e.t=5;v.hidden=true;v.path=[]}return}
+  if(e.ph==='go'){v.anim+=dt*3;const r=followPath(v,dt,18);if(r===true||r==='blocked'){e.ph='hid';e.t=2.5;v.hidden=true;v.path=[]}return} // dash home the moment the alarm sounds
   if(e.ph==='flee'){v.anim+=dt*3;v.face=e.dir;if(!moveA(v,e.dir*7*dt,0,.3))e.t=0;e.t-=dt;if(e.t<=0){v.eel=null;v.state='idle';v.think=0}return}
-  e.t-=dt;if(e.t<=0){v.eel=null;v.hidden=false;v.state='idle';v.think=0}
+  if(!eels.length)e.t-=dt;if(e.t<=0){v.eel=null;v.hidden=false;v.state='idle';v.think=0}
 }
 function catchVictim(e){
   const v=e.v;e.ph='out';e.out=0;if(!folk.includes(v))return;
