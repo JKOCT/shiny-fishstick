@@ -301,6 +301,7 @@ MINI.coal=sprite(["..kkkk..",".kxzxxk.","kxxxXXxk","kXxXXXXk",".kkkkkk."],5,PAL,
 const RES=[['wood','Wood'],['stone','Stone'],['copper','Copper'],['coal','Coal'],['fish','Fish'],['meal','Meals']];
 const JOBS=[{id:'chop',name:'Chop',icon:ICON.axe},{id:'mine',name:'Mine',icon:ICON.pick},{id:'fish',name:'Fish',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal}];
 const ORE_CHANCE=.035, HUNGRY_AT=30;
+const GAME_SPEED=0.5; // villagers, Little Wolf and arrivals run at half speed for a chill pace
 
 const BUILD={
   fire:{name:'Campfire',w:2,h:2,cost:{},hits:1},
@@ -794,10 +795,11 @@ function update(dt){
   const kx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),ky=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
   if(kx||ky){const sp=700*dpr/scale*dt;cam.x+=kx*sp;cam.y+=ky*sp;clampCam()}
 
-  for(const v of folk)updFolk(v,dt);
-  updWolf(dt);
+  const g=dt*GAME_SPEED;
+  for(const v of folk)updFolk(v,g);
+  updWolf(g);
 
-  if(folk.length<popCap()){spawnT+=dt;if(spawnT>12){spawnT=0;const v=spawnFolk(false);addFloat(v.x*T,v.y*T-26,'Hello!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}else spawnT=0;
+  if(folk.length<popCap()){spawnT+=g;if(spawnT>12){spawnT=0;const v=spawnFolk(false);addFloat(v.x*T,v.y*T-26,'Hello!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}else spawnT=0;
 
   for(const p of parts){p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
   parts=parts.filter(p=>p.life>0);
