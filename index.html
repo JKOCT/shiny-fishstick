@@ -278,13 +278,16 @@ function bcanvas(w,h,fn){const c=mk(w,h),x=c.getContext('2d');const R=(a,b,cw,ch
 function dome(R,cx,y0,rows,maxHalf,col,dark,grow=3.2){for(let r=0;r<rows;r++){const y=y0+r,half=Math.min(maxHalf,Math.round(2+Math.sqrt(r)*grow)),x0=cx-half,x1=cx+half;
   R(x0,y,x1-x0,1,INK);if(x1-x0>2){R(x0+1,y,x1-x0-2,1,col);if(half>4)R(x1-4,y,3,1,dark)}}R(cx-maxHalf,y0+rows,maxHalf*2,1,INK)}
 const BSPR={
-  house:bcanvas(32,40,(R)=>{ // Den: a rock dome with coral on top
-    R(9,3,1,10,'#e86a8a');R(7,6,1,4,'#e86a8a');R(8,9,1,1,'#e86a8a');R(11,6,1,5,'#e86a8a');R(10,10,1,1,'#e86a8a');R(9,3,1,1,'#ffa0b8');R(7,6,1,1,'#ffa0b8');R(11,6,1,1,'#ffa0b8');
-    dome(R,16,11,27,15,'#7d8a96','#5f6b77');
-    for(const[a,b]of[[8,18],[20,15],[6,28],[23,24],[14,20],[26,31]])R(a,b,2,1,'#9aa6b1');
+  house:bcanvas(32,40,(R)=>{ // Den: a dome built from shells, with a conch on top
+    for(let r=0;r<8;r++){const y=3+r,half=Math.round(r*.45);R(16-half-1,y,half*2+3,1,INK);R(16-half,y,half*2+1,1,r%3===2?'#c99a5e':'#f3d6a8')}
+    R(14,6,2,1,'#c99a5e');R(17,8,2,1,'#c99a5e');
+    dome(R,16,11,27,15,'#efd9c6','#d8bba6');
+    const SH=[['#f2a7b5','#c9707f'],['#fff4dc','#d8c3a0'],['#f6c49a','#c98b5e'],['#d8c4ec','#a58cc2']];let k=0;
+    for(let y=13;y<36;y+=4){const r=y-11,half=Math.min(15,Math.round(2+Math.sqrt(r)*3.2)),off=(y/4|0)%2?0:2;
+      for(let x=16-half+1+off;x+5<=16+half-1;x+=5){const[c,d]=SH[(k++)%4];
+        R(x+1,y,3,1,INK);R(x,y+1,1,2,INK);R(x+4,y+1,1,2,INK);R(x+1,y+3,3,1,INK);R(x+1,y+1,3,2,c);R(x+2,y+1,1,2,d);R(x+2,y+3,1,1,d)}}
     R(11,27,10,11,INK);R(12,28,8,10,'#0f1c28');R(12,26,8,1,INK);R(13,25,6,1,INK);
-    R(13,31,1,1,'#9ff3ff');R(18,34,1,1,'#9ff3ff');R(16,29,1,1,'#9ff3ff');
-    for(let k=0;k<4;k++){R(24+k,31-(k%2)*2,1,4+(k%2)*2,'#7ad08a');R(24+k,31-(k%2)*2,1,1,'#c8f5a0')}R(23,35,6,2,INK);R(24,35,4,1,'#4fa38a')}),
+    R(13,31,1,1,'#9ff3ff');R(18,34,1,1,'#9ff3ff');R(16,29,1,1,'#9ff3ff')}),
   store:bcanvas(32,40,(R)=>{ // Clam cache: a giant open clam full of goods
     for(let r=0;r<12;r++){const y=9+r,half=5+r,x0=16-half,x1=16+half;R(x0,y,x1-x0,1,INK);if(x1-x0>2)R(x0+1,y,x1-x0-2,1,r%3===2?'#a86a92':'#c98ab0')}
     for(let x=6;x<27;x+=4)R(x,14,1,7,'#a86a92');
@@ -324,7 +327,7 @@ const GAME_SPEED=0.5; // octopuses and the hermit crab move at half speed for a 
 
 const BUILD={
   fire:{name:'Vent',w:2,h:2,cost:{},hits:1},
-  house:{name:'Den',w:2,h:2,cost:{wood:12},hits:16,tip:'A cozy rock den. Each octopus claims one, and mothers lay their eggs there'},
+  house:{name:'Den',w:2,h:2,cost:{stone:12},hits:16,tip:'A cozy den built from shells. Each octopus claims one, and mothers lay their eggs there'},
   store:{name:'Clam cache',w:2,h:2,cost:{wood:20,stone:10},hits:20,tip:'Another drop-off point, so fewer long trips'},
   bench:{name:'Tool rock',w:1,h:1,cost:{wood:10,stone:6},hits:10,once:true,tip:'Sharper tools: everyone works 50% faster'},
   dog:{name:'Crab shell',w:1,h:1,cost:{wood:6},hits:6,once:true,tip:'A roomy spare shell for your hermit crab to nap in'},
@@ -452,21 +455,24 @@ function startBreeding(f,m){
   sfx('place');hud();return true;
 }
 function hatch(b){
-  const e=b.eggs,mom=folk.find(v=>v.id===e.mother),mcol=mom?mom.col:FOLK[0],ex=b.x*T+16,ey=(b.y+b.h)*T-6;
+  const e=b.eggs,mom=folk.find(v=>v.id===e.mother),mcol=mom?mom.col:FOLK[0],ex=b.x*T+16,ey=(b.y+b.h)*T-6,mname=mom?mom.name:'Mama';
   const n=10+(rnd()*6|0),stay=2+(rnd()<.5?1:0);
-  for(let k=0;k<n;k++){const a=rnd()*6.28,sp=10+rnd()*14;
-    hatchlings.push({x:ex,y:ey,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.7+6,t:0,life:k<stay?2.5:7+rnd()*4,stay:k<stay,col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
+  for(let k=0;k<n;k++){const a=rnd()*6.28,sp=5+rnd()*6;
+    hatchlings.push({x:ex,y:ey,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.6+3,t:0,stay:k<stay,idx:k,
+      life:k<stay?10.5+k*3.5:16+rnd()*8,col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
   if(mom){folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
-  addFloat(ex,ey-34,(mom?mom.name:'Mama')+' rests now',null,'#ffd9e6');addFloat(ex,ey-22,n+' little ones hatched!',null,'#fff6c8');
-  if(AC&&!muted)[784,659,523,659,784,1047].forEach((f,k)=>tone(f,f,.16,'sine',.035,k*.13));
+  addFloat(ex,ey-26,n+' little ones hatched!',null,'#fff6c8',3.5);
+  after(3.2,()=>addFloat(ex,ey-26,mname+' rests now',null,'#ffd9e6',4));
+  after(6.5,()=>addFloat(ex,ey-26,stay+' of them will stay',null,'#fff6c8',3.5));
+  if(AC&&!muted)[784,659,523,659,784,1047].forEach((f,k)=>tone(f,f,.22,'sine',.035,k*.2));
   b.eggs=null;b.owner=null;hud();
 }
 function updHatch(dt){
   for(const h of hatchlings){h.t+=dt;h.ph+=dt;
-    if(h.stay){h.vx*=Math.pow(.2,dt);h.vy*=Math.pow(.2,dt)}else{h.vx*=1+dt*.25;h.vy=h.vy*Math.pow(.6,dt)-dt*4}
-    h.x+=h.vx*dt;h.y+=h.vy*dt;
+    if(h.stay){const k=Math.pow(.5,dt);h.vx*=k;h.vy*=k}else{h.vy-=dt*1.2;h.vx*=1+dt*.06}
+    h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
     if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
-      addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8');h.dead=true;hud()}
+      addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);if(onScreen(nv))sfx('pop');h.dead=true;hud()}
     else if(!h.stay&&h.t>=h.life)h.dead=true}
   hatchlings=hatchlings.filter(h=>!h.dead);
 }
@@ -695,7 +701,10 @@ function petWolf(){WF.happy=2.2;sfx('bark');for(let k=0;k<3;k++)parts.push({x:WF
 // ================= particles / floats =================
 function burst(x,y,n,cols){for(let k=0;k<n;k++)parts.push({x,y,vx:(rnd()-.5)*70,vy:-20-rnd()*50,g:160,life:.4+rnd()*.4,max:.8,col:cols[k%cols.length]})}
 function puff(x,y){for(let k=0;k<8;k++)parts.push({x,y,vx:(rnd()-.5)*40,vy:-rnd()*30,g:-10,life:.5,max:.5,col:'#e8e8e8',sz:2})}
-function addFloat(x,y,text,icon,col){floats.push({x,y,text,icon,col:col||'#ffffff',life:1.4})}
+function addFloat(x,y,text,icon,col,life=2.6){
+  for(let k=0;k<12&&floats.some(f=>f.life>.4&&Math.abs(f.x-x)<60&&Math.abs(f.y-y)<10);k++)y-=11;
+  floats.push({x,y,text,icon,col:col||'#ffffff',life,max:life})}
+let later=[];function after(sec,fn){later.push({t:sec,fn})}
 
 // ================= audio =================
 let AC=null,muted=false,NB=null;const lastS={};
@@ -908,7 +917,7 @@ pickBox.addEventListener('click',e=>{
 const HINTS=[
   'Tap + next to a job to put your octopuses to work. Try Algae and Shells!',
   'Work makes octopuses hungry. Send one to gather Mussels and one to Cook so meals keep coming.',
-  'Save 12 algae and place a Den. Each octopus claims a den of their own.',
+  'Save 12 shells and place a Den. Each octopus claims a den of their own.',
   'Tap an octopus or a den to see who lives where.',
   'With a free den and 10 meals saved, your octopuses can start a family.',
   "Algae and shells don't come back, so your octopuses will roam further. A Clam cache saves long trips.",
@@ -962,7 +971,8 @@ function update(dt){
 
   for(const p of parts){p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
   parts=parts.filter(p=>p.life>0);
-  for(const f of floats){f.life-=dt;f.y-=14*dt}floats=floats.filter(f=>f.life>0);
+  for(const f of floats){f.life-=dt;f.y-=6*dt}floats=floats.filter(f=>f.life>0);
+  for(const l of later){l.t-=dt;if(l.t<=0){l.done=true;l.fn()}}later=later.filter(l=>!l.done);
   const ccx=(cam.x+viewW()/2)/T,ccy=(cam.y+viewH()/2)/T;
   for(const b of flies){b.ph+=dt;b.x+=Math.cos(b.ph*.7)*dt*.9;b.y+=Math.sin(b.ph*1.3)*dt*.6;
     if(Math.abs(b.x-ccx)>viewW()/T*.7||Math.abs(b.y-ccy)>viewH()/T*.7){b.x=ccx+(rnd()-.5)*viewW()/T;b.y=ccy+(rnd()-.5)*viewH()/T}}
@@ -1021,7 +1031,7 @@ function render(){
     ctx.globalAlpha=p.smoke?a*.7:a;ctx.fillStyle=p.col;const z=p.sz||1;ctx.fillRect(Math.round(p.x),Math.round(p.y),z+(p.smoke&&p.life<1?1:0),z)}
   ctx.globalAlpha=1;
   ctx.font='6px "Press Start 2P", monospace';ctx.textBaseline='middle';
-  for(const fl of floats){const a=Math.min(1,fl.life*1.5);ctx.globalAlpha=a;const tw=ctx.measureText(fl.text).width,ic=fl.icon?MINI[fl.icon]:null,tot=tw+(ic?10:0);
+  for(const fl of floats){const a=Math.min(1,fl.life/.7,(fl.max-fl.life)/.25+.2);ctx.globalAlpha=a;const tw=ctx.measureText(fl.text).width,ic=fl.icon?MINI[fl.icon]:null,tot=tw+(ic?10:0);
     let x=Math.round(fl.x-tot/2),y=Math.round(fl.y);if(ic){ctx.drawImage(ic,x,y-3);x+=10}
     ctx.fillStyle='#1d2b3a';ctx.fillText(fl.text,x+1,y+1);ctx.fillStyle=fl.col;ctx.fillText(fl.text,x,y)}
   ctx.globalAlpha=1;
@@ -1099,7 +1109,7 @@ function drawFolk(v){
     if(v.carry.copper||v.carry.coal){ctx.drawImage(MINI[v.carry.copper?'copper':'coal'],x+(v.face>0?3:-3),hy-5)}return}
 }
 function drawHatch(h){ // a teeny hatchling
-  const a=h.stay?1:Math.max(0,Math.min(1,(h.life-h.t)/2.5)),x=Math.round(h.x),y=Math.round(h.y),w=(h.ph*6|0)%2;
+  const a=h.stay?1:Math.max(0,Math.min(1,(h.life-h.t)/6)),x=Math.round(h.x),y=Math.round(h.y),w=(h.ph*6|0)%2;
   ctx.globalAlpha=a;ctx.fillStyle=INK;ctx.fillRect(x-2,y-5,5,4);ctx.fillRect(x-2,y-1,1,2-w);ctx.fillRect(x,y-1,1,1+w);ctx.fillRect(x+2,y-1,1,2-w);
   ctx.fillStyle=h.col;ctx.fillRect(x-1,y-4,3,2);ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-3,1,1);ctx.fillRect(x+1,y-3,1,1);ctx.globalAlpha=1;
 }
