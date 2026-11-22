@@ -122,7 +122,6 @@ body.noted #hint{display:none}
 <div id="menu" class="panel" hidden>
   <div class="mrow">
     <button class="mb" id="snd">Sound: on</button>
-    <button class="mb" id="mapb">Map: off</button>
   </div>
   <div class="mrow">
     <button class="mb" id="zout">Zoom -</button>
@@ -1057,7 +1056,7 @@ try{if(localStorage.getItem(KEY+'-jobsmin')==='1')setJobsMin(true)}catch(e){}
 jlist.innerHTML=JOBS.map(j=>`<div class="job" id="jrow-${j.id}"${j.id==='explore'?' hidden':''}><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer on ${j.name}">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More on ${j.name}">+</button></div>`).join('');
 jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
 // menu
-const menu=document.getElementById('menu'),menuB=document.getElementById('menuB'),mapB=document.getElementById('mapb');
+const menu=document.getElementById('menu'),menuB=document.getElementById('menuB');
 function placeMini(){ // under the menu button, or below the town panel if they would overlap
   let top=menu.hidden?54:menu.getBoundingClientRect().bottom+8;
   if(!mini.hidden){const tw=document.getElementById('town').getBoundingClientRect(),mw=mini.offsetWidth||160;
@@ -1068,8 +1067,7 @@ function closeMenus(){closeRes();menu.hidden=true;menuB.setAttribute('aria-expan
 cv.addEventListener('pointerdown',()=>{if(!menu.hidden){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini()}},true);
 document.getElementById('zin').onclick=()=>zoomTo(zoomT*1.25);
 document.getElementById('zout').onclick=()=>zoomTo(zoomT/1.25);
-mapB.onclick=()=>{mini.hidden=!mini.hidden;mapB.textContent='Map: '+(mini.hidden?'off':'on');placeMini();drawMini()};
-if(innerWidth>=900){mini.hidden=false;mapB.textContent='Map: on'}
+mini.hidden=true; // the minimap is turned off for good
 const sndB=document.getElementById('snd');
 function toggleMute(){muted=!muted;sndB.textContent='Sound: '+(muted?'off':'on')}
 sndB.onclick=()=>{ensureAudio();toggleMute()};
