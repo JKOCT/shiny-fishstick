@@ -493,6 +493,9 @@ function hatch(b){
   for(let k=0;k<n;k++){const a=rnd()*6.28,sp=5+rnd()*6;
     hatchlings.push({x:ex,y:ey,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.6+3,t:0,stay:k<stay,idx:k,
       life:k<stay?10.5+k*3.5:16+rnd()*8,gen,...babyLook(e),col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
+  // if the mother is the last female, make sure one of the babies who stay is a daughter
+  const lastFemale=!folk.some(v=>v!==mom&&v.sex==='f');
+  hatchlings.filter(h=>h.t===0&&h.stay&&!h.sex).forEach((h,k)=>{h.sex=lastFemale&&k===0?'f':(rnd()<.5?'f':'m')});
   if(mom){folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
   addFloat(ex,ey-26,n+' little ones hatched!',null,'#fff6c8',3.5);
   after(3.2,()=>addFloat(ex,ey-26,mname+' rests now',null,'#ffd9e6',4));
@@ -506,7 +509,7 @@ function updHatch(dt){
   for(const h of hatchlings){h.t+=dt;h.ph+=dt;
     if(h.stay){const k=Math.pow(.5,dt);h.vx*=k;h.vy*=k}else{h.vy-=dt*1.2;h.vx*=1+dt*.06}
     h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
-    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen,multi:h.multi,col2:h.col2,col3:h.col3});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
+    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen,multi:h.multi,col2:h.col2,col3:h.col3,sex:h.sex});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
       addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);if(onScreen(nv))sfx('pop');h.dead=true;hud()}
     else if(!h.stay&&h.t>=h.life)h.dead=true}
   hatchlings=hatchlings.filter(h=>!h.dead);
