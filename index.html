@@ -332,7 +332,6 @@ function genMap(){
   const r=mulberry(S.seed),nf=fbm(r,10),nr=fbm(r,6),nw=fbm(r,15),cx=W/2,cy=H/2;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
     const i=y*W+x,d=Math.hypot(x+.5-cx,(y+.5-cy)*1.2);S.varr[i]=r()*16|0;
-    if(nw(x,y)>0.69&&d>10){S.ground[i]=G_WATER;continue}
     if(d<5)continue;
     const f=nf(x,y),k=nr(x,y);
     if(k>0.655&&r()<0.75)setObj(i,O_ROCK);
@@ -348,15 +347,20 @@ function genMap(){
   ensure(O_TREE,15,9);ensure(O_ROCK,8,14);ensure(O_TREE,60,18);
   addBoulders(r);
 }
-function boulderPatch(px,py,rx,ry){
-  for(let y=py-ry-2;y<=py+ry+2;y++)for(let x=px-rx-2;x<=px+rx+2;x++){if(!inb(x,y))continue;const dd=((x-px)/(rx+.5))**2+((y-py)/(ry+.5))**2,i=y*W+x;
-    if(dd<1){S.ground[i]=G_WATER;S.obj[i]=O_NONE}else if(dd<2.2&&S.ground[i]===G_GRASS){S.ground[i]=G_SAND;S.obj[i]=O_NONE}}
+function boulderSpot(r,px,py){ // a little cluster of 3-4 boulders ringed with soft sand
+  const want=3+(r()<.5?1:0),tiles=[[px,py]];let guard=0;
+  while(tiles.length<want&&guard++<30){const[bx,by]=tiles[r()*tiles.length|0],[dx,dy]=[[1,0],[-1,0],[0,1],[0,-1]][r()*4|0],nx=bx+dx,ny=by+dy;
+    if(inb(nx,ny)&&!tiles.some(([x,y])=>x===nx&&y===ny))tiles.push([nx,ny])}
+  for(const[x,y]of tiles){if(!inb(x,y))continue;const i=y*W+x;S.ground[i]=G_WATER;S.obj[i]=O_NONE}
+  for(const[x,y]of tiles)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(!inb(nx,ny))continue;const i=ny*W+nx;
+    if(S.ground[i]===G_GRASS){S.ground[i]=G_SAND;S.obj[i]=O_NONE}}
 }
 function addBoulders(r){
-  const cx=W/2,cy=H/2;
-  for(let k=0;k<45;k++){const x=2+r()*(W-4)|0,y=2+r()*(H-4)|0;if(Math.hypot(x-cx,(y-cy)*1.2)<10)continue;boulderPatch(x,y,r()*1.6|0,r()*1.3|0)}
-  // a small mussel spot near camp, with a clear lane to it so foragers can start right away
-  const a=r()*6.28,bx=Math.round(cx+Math.cos(a)*8),by=Math.round(cy+Math.sin(a)*7);boulderPatch(bx,by,1,0);
+  const cx=W/2,cy=H/2,spots=[];
+  for(let k=0;k<400&&spots.length<70;k++){const x=3+r()*(W-6)|0,y=3+r()*(H-6)|0;
+    if(Math.hypot(x-cx,(y-cy)*1.2)<10||spots.some(([a,b])=>Math.hypot(a-x,b-y)<9))continue;spots.push([x,y]);boulderSpot(r,x,y)}
+  // a mussel spot near camp, with a clear lane to it so foragers can start right away
+  const a=r()*6.28,bx=Math.round(cx+Math.cos(a)*8),by=Math.round(cy+Math.sin(a)*7);boulderSpot(r,bx,by);
   for(let t=0;t<=1;t+=.05){const lx=Math.round(cx+(bx-cx)*t),ly=Math.round(cy+(by-cy)*t);
     for(let y=ly-1;y<=ly+1;y++)for(let x=lx-1;x<=lx+1;x++){if(!inb(x,y))continue;const i=y*W+x;if(S.ground[i]!==G_WATER)S.obj[i]=O_NONE}}
 }
