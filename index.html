@@ -13,9 +13,21 @@ canvas{display:block;image-rendering:pixelated;cursor:pointer}
 .panel{background:var(--parch);border:3px solid var(--ink);box-shadow:inset -3px -3px 0 var(--parch2),inset 3px 3px 0 var(--hi),0 3px 0 rgba(0,0,0,.35)}
 #top{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;pointer-events:none}
 #top>*{pointer-events:auto}
-#res{display:flex;gap:14px;padding:7px 12px;font-size:12px;align-items:center;flex-wrap:wrap}
+#left{display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:calc(100% - 190px)}
+#res{display:flex;gap:6px 12px;padding:7px 10px;font-size:10px;align-items:center;flex-wrap:wrap}
+#jobs{padding:6px 8px;font-size:8px;min-width:190px}
+.jh{all:unset;display:flex;justify-content:space-between;width:100%;cursor:pointer;padding:2px 0 6px;font-size:9px}
+.jh:focus-visible{outline:2px solid var(--ink)}
+#jobs.closed #jlist{display:none}#jobs.closed .jh{padding-bottom:2px}
+.job{display:grid;grid-template-columns:22px 1fr 22px 26px 22px;align-items:center;gap:4px;padding:2px 0}
+.job img{width:20px;height:20px;image-rendering:pixelated}
+.jb{width:22px;height:22px;font:inherit;font-size:11px;padding:0;background:var(--parch);border:2px solid var(--ink);color:var(--ink);cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2)}
+.jb:active{transform:translateY(1px)}.jb:disabled{opacity:.35;cursor:default}
+.jc{text-align:center;font-size:10px}
+#hungry{color:var(--bad);padding-top:4px;min-height:1em}
+@media (max-width:600px){#res{font-size:8px}.r img{width:16px!important;height:16px!important}#left{max-width:calc(100% - 180px)}#jobs{min-width:170px}}
 .r{display:flex;align-items:center;gap:6px}
-.r img{width:24px;height:24px;image-rendering:pixelated}
+.r img{width:20px;height:20px;image-rendering:pixelated}
 #btns{display:flex;gap:6px}
 .sq{width:38px;height:38px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer;padding:0}
 .sq:active{transform:translateY(2px)}
@@ -41,10 +53,12 @@ canvas{display:block;image-rendering:pixelated;cursor:pointer}
 <body>
 <canvas id="c"></canvas>
 <div id="top">
-  <div id="res" class="panel">
-    <div class="r"><img id="ic-wood" alt="Wood"><span id="n-wood">0</span></div>
-    <div class="r"><img id="ic-stone" alt="Stone"><span id="n-stone">0</span></div>
-    <div class="r"><img id="ic-folk" alt="Villagers"><span id="n-folk">0/0</span></div>
+  <div id="left">
+    <div id="res" class="panel"></div>
+    <div id="jobs" class="panel">
+      <button id="jh" class="jh" aria-expanded="true"><span>Jobs</span><span id="idle"></span></button>
+      <div id="jlist"></div>
+    </div>
   </div>
   <div id="btns">
     <button class="sq panel" id="zout" title="Zoom out">-</button>
@@ -55,13 +69,14 @@ canvas{display:block;image-rendering:pixelated;cursor:pointer}
   </div>
 </div>
 <div id="help" class="panel">
-  <b>Gather</b>: drag a box over trees &amp; rocks. Villagers clear it and carry everything to the campfire<br>
-  <b>Cancel</b>: drag to unmark; tap a site, road or building to remove it<br>
+  <b>Jobs</b>: use + and - to put villagers to work: chopping, mining, fishing or cooking<br>
+  <b>Food</b>: work and walking make villagers hungry. Fishers catch fish, cooks turn them into meals<br>
   <b>Build</b>: pick a building and tap to place it. Villagers build it<br>
+  <b>Remove</b>: tap a site, road or building to take it down<br>
   <b>Look around</b>: drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap<br>
   <b>Zoom</b>: wheel, pinch, or +/-<br>
   <b>Pet Little Wolf</b>: tap them with Look<br>
-  <b>Keys</b>: 1-8 tools, Esc = Look, M = mute<br>
+  <b>Keys</b>: 1-7 tools, Esc = Look, M = mute<br>
   <button class="panel" id="reset" style="margin-top:8px;font:inherit;font-size:8px;padding:6px 8px;cursor:pointer">New map</button>
 </div>
 <canvas id="mini" class="panel" title="Tap to jump there"></canvas>
@@ -76,7 +91,7 @@ const G_GRASS=0, G_WATER=1, G_SAND=2, G_ROAD=3;
 const O_NONE=0, O_TREE=1, O_STUMP=2, O_SAP=3, O_ROCK=4, O_RUBBLE=5;
 const TREE_HP=6, ROCK_HP=12, HIT=.55, GATHER_HIT=1.0;
 function hitIv(v){return v.job&&v.job.kind!=='build'?GATHER_HIT:HIT}
-const KEY='summers-town-v2';
+const KEY='summers-town-v3';
 
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const rnd=Math.random;
@@ -84,7 +99,7 @@ const rnd=Math.random;
 // ================= sprites =================
 const PAL={k:'#2b1d14',g:'#2f6b3a',G:'#4a9a4a',l:'#7cc46a',t:'#7a4b2a',T:'#5a361e',u:'#d4a26a',U:'#a8713f',
   s:'#8b8f9a',S:'#5e6270',w:'#b9bdc6',y:'#f4d35e',r:'#d9534f',R:'#a83a37',W:'#ffffff',f:'#f5c9a0',h:'#3b2a20',
-  e:'#2b1d14',m:'#c0504d',d:'#f2a541',D:'#d9822b',b:'#5a3a22',a:'#a7adb5',A:'#dde1e5',n:'#6b7280',p:'#f7a8c4'};
+  e:'#2b1d14',m:'#c0504d',d:'#f2a541',D:'#d9822b',b:'#5a3a22',a:'#a7adb5',A:'#dde1e5',n:'#6b7280',p:'#f7a8c4',q:'#86b8d8',Q:'#4f7f9f',o:'#e08b4f',O:'#a65a2a',x:'#45454f',X:'#1c1c22',z:'#d8d8e8',j:'#f2c25a',J:'#c8873a'};
 function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
 function sprite(rows,h,pal=PAL,w=16){
   h=h||rows.length;const c=mk(w,h),x=c.getContext('2d'),off=h-rows.length;
@@ -273,6 +288,20 @@ const BSPR={
     R(6,13,4,6,'#2b1d14');R(7,12,2,1,'#2b1d14');
     R(5,9,6,1,'#f4d35e');R(12,17,4,2,'#2b1d14');R(13,17,2,1,'#5e6270')})
 };
+// ---------- food & ore sprites ----------
+const E16="................";
+ICON.fish=sprite(["....kkkkkk...kk.","..kkqqqqqqk.kqk.",".kqeqqqqqqqkqqk.",".kqqqqqqqqqqqk..","..kQQQQQQQkkQQk.","...kkkkkkk..kk..",E16,E16,E16,E16],16);
+ICON.meal=sprite(["......W..W......",".....W..W.......","....kkkkkkkk....","...kjjjJjjJjk...","..kkkkkkkkkkkk..","..kuuuuuuuuuuk..","...kuUuuuuUuk...","....kkkkkkkk....",E16,E16,E16],16);
+ICON.copper=sprite(["......kkkk......","....kkojooOk....","...kojjoooOOk...","..koooooooOOOk..","..kOooooOOOOOk..","...kkkkkkkkkk...",E16,E16,E16,E16],16);
+ICON.coal=sprite(["......kkkk......","....kkxxzxkk....","...kxxXxxxxxk...","..kxzxxxXxxzxk..","..kXxxxxxxxXXk..","...kkkkkkkkkk...",E16,E16,E16,E16],16);
+MINI.fish=sprite(["..kkkk.k",".kqeqqkq","kqqqqqqk",".kQQQQkQ","..kkkk.k"],5,PAL,8);
+MINI.meal=sprite([".kkkkkk.","kjjJjjJk","kkkkkkkk",".kuUuuk.","..kkkk.."],5,PAL,8);
+MINI.copper=sprite(["..kkkk..",".kojook.","kooooOOk","kOOOOOOk",".kkkkkk."],5,PAL,8);
+MINI.coal=sprite(["..kkkk..",".kxzxxk.","kxxxXXxk","kXxXXXXk",".kkkkkk."],5,PAL,8);
+const RES=[['wood','Wood'],['stone','Stone'],['copper','Copper'],['coal','Coal'],['fish','Fish'],['meal','Meals']];
+const JOBS=[{id:'chop',name:'Chop',icon:ICON.axe},{id:'mine',name:'Mine',icon:ICON.pick},{id:'fish',name:'Fish',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal}];
+const ORE_CHANCE=.035, HUNGRY_AT=30;
+
 const BUILD={
   fire:{name:'Campfire',w:2,h:2,cost:{},hits:1},
   house:{name:'House',w:2,h:2,cost:{wood:12},hits:16,tip:'Room for 2 more villagers'},
@@ -287,7 +316,7 @@ const FOLK=[['#4f86c6','#2b1d14'],['#6aa84f','#8a5a2b'],['#c27ba0','#d9a441'],['
 let S, folk=[], parts=[], floats=[], flies=[], nextId=1;
 const shakeT=new Float32Array(N).fill(-9);
 const WF={x:0,y:0,face:-1,state:'follow',anim:0,happy:0,stuck:0,path:[],moving:false};
-let tool='look', time=0, hover=null, sel=null, anyMarks=false, spawnT=0;
+let tool='look', time=0, hover=null, spawnT=0;
 
 function vnoise(r,cell){const gw=Math.ceil(W/cell)+2,gh=Math.ceil(H/cell)+2,g=[];for(let i=0;i<gw*gh;i++)g.push(r());const sm=t=>t*t*(3-2*t);
   return(x,y)=>{const fx=x/cell,fy=y/cell,ix=fx|0,iy=fy|0,tx=sm(fx-ix),ty=sm(fy-iy);const a=g[iy*gw+ix],b=g[iy*gw+ix+1],c=g[(iy+1)*gw+ix],d=g[(iy+1)*gw+ix+1];return a+(b-a)*tx+(c-a)*ty+(a-b-c+d)*tx*ty}}
@@ -295,7 +324,7 @@ function fbm(r,cell){const a=vnoise(r,cell),b=vnoise(r,cell/2);return(x,y)=>a(x,
 
 function newGame(seed){
   S={seed:seed??(rnd()*1e9|0),ground:new Uint8Array(N),obj:new Uint8Array(N),hp:new Uint8Array(N),timer:new Float32Array(N),varr:new Uint8Array(N),
-    mark:new Uint8Array(N),bmap:new Int16Array(N),buildings:[],res:{wood:0,stone:0},step:0};
+    bmap:new Int16Array(N),buildings:[],res:{wood:0,stone:0,copper:0,coal:0,fish:0,meal:8},step:0,cooked:0};
   genMap();addBuilding('fire',W/2-1,H/2-1,true);
   folk=[];for(let k=0;k<5;k++)spawnFolk(k===0);
   resetActors();centerOnFire();
@@ -318,6 +347,11 @@ function genMap(){
     for(let y=sy-2;y<=sy+2;y++)for(let x=sx-2;x<=sx+2;x++){if(x<1||y<1||x>=W-1||y>=H-1)continue;const i=y*W+x;
       if(S.ground[i]!==G_WATER&&S.obj[i]===O_NONE&&dist2(i,cx,cy)>36&&r()<.65)setObj(i,kind)}}};
   ensure(O_TREE,15,9);ensure(O_ROCK,8,14);ensure(O_TREE,60,18);
+  // make sure there's water within reach of the camp for fishing
+  let near=false;for(let i=0;i<N&&!near;i++)if(S.ground[i]===G_WATER&&dist2(i,cx,cy)<18*18)near=true;
+  if(!near){const a=r()*6.28,px=Math.round(cx+Math.cos(a)*13),py=Math.round(cy+Math.sin(a)*11);
+    for(let y=py-3;y<=py+3;y++)for(let x=px-4;x<=px+4;x++){if(!inb(x,y))continue;const dd=((x-px)/4.5)**2+((y-py)/3.5)**2,i=y*W+x;
+      if(dd<1){S.ground[i]=G_WATER;S.obj[i]=O_NONE}else if(dd<1.6&&S.ground[i]===G_GRASS){S.ground[i]=G_SAND;if(S.obj[i]===O_TREE)S.obj[i]=O_NONE}}}
 }
 function setObj(i,o){S.obj[i]=o;S.hp[i]=o===O_TREE?TREE_HP:o===O_ROCK?ROCK_HP:0}
 function dist2(i,cx,cy){const x=i%W+.5,y=(i/W|0)+.5;return(x-cx)**2+(y-cy)**2}
@@ -326,13 +360,13 @@ function resetActors(){
   const s=folk[0]||{x:W/2,y:H/2+2};WF.x=s.x+1;WF.y=s.y+.3;WF.state='follow';WF.path=[];
   flies=[];for(let k=0;k<10;k++)flies.push({x:W/2+(rnd()-.5)*30,y:H/2+(rnd()-.5)*20,ph:rnd()*9,col:['#ffffff','#f7a8c4','#f4d35e','#9ec5ff'][k%4]});
 }
-function spawnFolk(isSummer){
+function spawnFolk(isSummer,job='idle',food=100){
   const f=fire(),cx=f.x+1,cy=f.y+1;let spot=null;
   for(let tries=0;tries<40&&!spot;tries++){const a=rnd()*6.28,d=2+rnd()*2,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(walkXY(x,y))spot={x,y}}
   if(!spot)spot={x:cx,y:cy+1};
   const c=FOLK[(folk.length-1+FOLK.length)%FOLK.length];
-  const v={id:nextId++,summer:isSummer,x:spot.x+.5,y:spot.y+.65,path:[],state:'rest',job:null,carry:null,hitT:0,think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,
-    spr:isSummer?SUMMER:charSprites({...PAL,d:c[0],D:shade(c[0],.78),h:c[1]})};
+  const v={id:nextId++,summer:isSummer,job,food,x:spot.x+.5,y:spot.y+.65,path:[],state:'rest',task:null,carry:null,hitT:0,fishT:0,catch:0,cooking:false,
+    think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,spr:isSummer?SUMMER:charSprites({...PAL,d:c[0],D:shade(c[0],.78),h:c[1]})};
   folk.push(v);return v;
 }
 
@@ -343,9 +377,9 @@ function walkable(i){const o=S.obj[i];return S.ground[i]!==G_WATER&&S.bmap[i]===
 function walkXY(x,y){return inb(x,y)&&walkable(y*W+x)}
 function forN8(i,fn){const x=i%W,y=i/W|0;for(const[dx,dy]of DIRS){const nx=x+dx,ny=y+dy;if(!inb(nx,ny))continue;const r=fn(ny*W+nx);if(r!==null&&r!==undefined&&r!==false)return r}return null}
 const prev=new Int32Array(N),Q=new Int32Array(N);
-function bfs(start,goal,maxN=N){
+function bfs(start,goal){
   prev.fill(-1);let h=0,t=0;Q[t++]=start;prev[start]=start;
-  while(h<t&&h<maxN){const i=Q[h++];const g=goal(i);
+  while(h<t){const i=Q[h++];const g=goal(i);
     if(g!==null&&g!==undefined&&g!==false){const p=[];let c=i;while(c!==start){p.push(c);c=prev[c]}p.reverse();return{path:p,target:g,end:i}}
     const x=i%W,y=i/W|0;
     for(let d=0;d<8;d++){const nx=x+DIRS[d][0],ny=y+DIRS[d][1];if(!inb(nx,ny))continue;const n=ny*W+nx;
@@ -359,6 +393,7 @@ function pay(c,sign=-1){for(const[k,v]of Object.entries(c))S.res[k]+=sign*v}
 function count(type,done=true){return S.buildings.filter(b=>b&&b.type===type&&(!done||b.done)).length}
 function hasBench(){return count('bench')>0}
 function popCap(){return 5+2*count('house')}
+function isDrop(b){return b&&b.done&&(b.type==='fire'||b.type==='store')}
 
 function blocked(x,y,hw){for(const px of[x-hw,x+hw])for(const py of[y-.3,y-.02]){if(!walkXY(Math.floor(px),Math.floor(py)))return true}return false}
 function moveA(a,dx,dy,hw){let ok=false;if(dx&&!blocked(a.x+dx,a.y,hw)){a.x+=dx;ok=true}if(dy&&!blocked(a.x,a.y+dy,hw)){a.y+=dy;ok=true}return ok}
@@ -377,75 +412,120 @@ function hitTile(i,who){
   if(o===O_TREE){
     if(vis){burst(cx,cy-4,4,['#4a9a4a','#7cc46a','#7a4b2a']);sfx('chop')}
     S.hp[i]=Math.max(0,S.hp[i]-1);
-    if(S.hp[i]===0){S.obj[i]=O_STUMP;S.mark[i]=0;S.timer[i]=90+rnd()*90;if(vis){burst(cx,cy-8,16,['#4a9a4a','#7cc46a','#2f6b3a','#d4a26a']);sfx('fall')}return{type:'wood',amt:3}}
+    if(S.hp[i]===0){S.obj[i]=O_STUMP;if(vis){burst(cx,cy-8,16,['#4a9a4a','#7cc46a','#2f6b3a','#d4a26a']);sfx('fall')}return{wood:3}}
   }else if(o===O_ROCK){
     if(vis){burst(cx,cy+2,4,['#8b8f9a','#b9bdc6','#5e6270']);sfx('mine')}
     S.hp[i]=Math.max(0,S.hp[i]-1);
-    if(S.hp[i]===0){S.obj[i]=O_RUBBLE;S.mark[i]=0;S.timer[i]=40;if(vis)burst(cx,cy+2,12,['#8b8f9a','#b9bdc6','#d8d2c0'])}
-    if(S.hp[i]%3===0)return{type:'stone',amt:2};
+    if(S.hp[i]===0){S.obj[i]=O_RUBBLE;S.timer[i]=40;if(vis)burst(cx,cy+2,12,['#8b8f9a','#b9bdc6','#d8d2c0'])}
+    if(S.hp[i]%3===0){const y={stone:2};if(rnd()<ORE_CHANCE){const k=rnd()<.5?'copper':'coal';y[k]=1;
+      burst(cx,cy,10,k==='copper'?['#e08b4f','#f4d35e','#ffffff']:['#45454f','#d8d8e8','#1c1c22']);if(vis)sfx('ore')}return y}
   }
   return null;
 }
 
 // ================= villagers =================
-function jobValid(j){if(!j)return false;if(j.kind==='tree')return S.obj[j.i]===O_TREE&&S.mark[j.i];if(j.kind==='rock')return S.obj[j.i]===O_ROCK&&S.mark[j.i];if(j.kind==='build')return!j.b.removed&&!j.b.done;return false}
-function findJob(v){
-  const start=tileOf(v);
-  const sites=S.buildings.filter(b=>b&&!b.done);
-  if(sites.length){
-    const cnt=new Map();for(const o of folk)if(o!==v&&o.job&&o.job.kind==='build')cnt.set(o.job.b,(cnt.get(o.job.b)||0)+1);
-    const r=bfs(start,i=>forN8(i,n=>{const b=bAt(n);return b&&!b.done&&(cnt.get(b)||0)<3?{kind:'build',b}:null}));
-    if(r){v.job=r.target;v.path=r.path;v.state='go';return true}
-  }
-  if(anyMarks){
-    const claimed=new Set();for(const o of folk)if(o!==v&&o.job&&o.job.i!==undefined)claimed.add(o.job.i);
-    const r=bfs(start,i=>forN8(i,n=>{if(!S.mark[n]||claimed.has(n))return null;const o=S.obj[n];return o===O_TREE?{kind:'tree',i:n}:o===O_ROCK?{kind:'rock',i:n}:null}));
-    if(r){v.job=r.target;v.path=r.path;v.state='go';return true}
-  }
-  return false;
+function drain(v,a){v.food=Math.max(0,v.food-a)}
+function taskValid(v,t){
+  if(!t)return false;
+  switch(t.kind){
+    case'tree':return v.job==='chop'&&S.obj[t.i]===O_TREE;
+    case'rock':return v.job==='mine'&&S.obj[t.i]===O_ROCK;
+    case'build':return!t.b.removed&&!t.b.done;
+    case'fish':return v.job==='fish'&&walkable(t.spot)&&!v.carry;
+    case'cook':return v.job==='cook'&&!t.b.removed;
+  }return false;
 }
-function planDeliver(v){
-  const r=bfs(tileOf(v),i=>forN8(i,n=>{const b=bAt(n);return b&&b.done&&(b.type==='fire'||b.type==='store')?b:null}));
-  if(!r)return false;v.path=r.path;v.state='deliver';return true;
+function claimed(v,key){const s=new Set();for(const o of folk)if(o!==v&&o.task&&o.task[key]!==undefined)s.add(o.task[key]);return s}
+function setTask(v,r){v.task=r.target;v.path=r.path;v.state='go';v.restT=0;return true}
+function findBuild(v){
+  if(!S.buildings.some(b=>b&&!b.done))return false;
+  const cnt=new Map();for(const o of folk)if(o!==v&&o.task&&o.task.kind==='build')cnt.set(o.task.b,(cnt.get(o.task.b)||0)+1);
+  const r=bfs(tileOf(v),i=>forN8(i,n=>{const b=bAt(n);return b&&!b.done&&(cnt.get(b)||0)<3?{kind:'build',b}:null}));
+  return r?setTask(v,r):false;
 }
+function findHarvest(v,kind){
+  const c=claimed(v,'i'),name=kind===O_TREE?'tree':'rock';
+  const r=bfs(tileOf(v),i=>forN8(i,n=>S.obj[n]===kind&&!c.has(n)?{kind:name,i:n}:null));
+  return r?setTask(v,r):false;
+}
+function findFishing(v){
+  const c=claimed(v,'spot');
+  const r=bfs(tileOf(v),i=>{if(c.has(i))return null;const x=i%W,y=i/W|0;
+    for(const[dx,dy]of[[0,1],[1,0],[-1,0],[0,-1]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.ground[ny*W+nx]===G_WATER)return{kind:'fish',spot:i,w:ny*W+nx}}return null});
+  return r?setTask(v,r):false;
+}
+function goCook(v){const f=fire();const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===f?{kind:'cook',b:f}:null));return r?setTask(v,r):false}
+function planDeliver(v){const r=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:null));if(!r)return false;v.path=r.path;v.state='deliver';return true}
+function goEat(v){const r=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:null));if(!r)return false;v.path=r.path;v.state='toEat';return true}
 function goRest(v){
   const f=fire(),cx=f.x+1,cy=f.y+1;
   for(let k=0;k<12;k++){const a=rnd()*6.28,d=2.2+rnd()*2,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(!walkXY(x,y))continue;
     const t=y*W+x,r=bfs(tileOf(v),i=>i===t?1:null);if(r){v.path=r.path;v.state='toRest';return}}
   v.state='rest';
 }
+function think(v){
+  if(v.carry){if(planDeliver(v))return}
+  else{
+    if(v.food<HUNGRY_AT&&S.res.meal+S.res.fish>0&&goEat(v))return;
+    if(findBuild(v))return;
+    if(v.job==='chop'&&findHarvest(v,O_TREE))return;
+    if(v.job==='mine'&&findHarvest(v,O_ROCK))return;
+    if(v.job==='fish'&&findFishing(v))return;
+    if(v.job==='cook'&&S.res.fish>0&&goCook(v))return;
+  }
+  if(v.state==='idle')goRest(v);
+  else{const f=fire();if(Math.abs(v.x-(f.x+1))+Math.abs(v.y-(f.y+1))>6||rnd()<.04)goRest(v);else if(Math.abs(v.x-f.x-1)>.3)v.face=v.x<f.x+1?1:-1}
+}
+function dropTask(v){if(v.cooking){S.res.fish++;v.cooking=false}v.task=null;v.path=[];v.state='idle';v.think=0}
 function updFolk(v,dt){
   v.anim+=dt;
-  const speed=2.6,work=hasBench()?1.5:1;
-  if(v.state==='idle'||v.state==='rest'){
-    v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;
-    if(v.carry){if(planDeliver(v))return}
-    else if(findJob(v)){v.restT=0;return}
-    if(v.state==='idle')goRest(v);
-    else{const f=fire();if(Math.abs(v.x-(f.x+1))+Math.abs(v.y-(f.y+1))>6||rnd()<.04)goRest(v);else if(Math.abs(v.x-f.x-1)>.3)v.face=v.x<f.x+1?1:-1}
-    return}
+  const work=(hasBench()?1.5:1)*(v.food<=0?.5:1),st=v.state;
+  if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
   v.restT=0;
-  if(v.state==='go'){
-    if(!jobValid(v.job)){v.job=null;v.path=[];v.state='idle';v.think=0;return}
-    const r=followPath(v,dt,speed);
-    if(r==='blocked'){v.job=null;v.state='idle';v.think=.1}
-    else if(r===true){v.state='work';v.hitT=0;const j=v.job,c=j.kind==='build'?{x:j.b.x+j.b.w/2}:{x:j.i%W+.5};if(Math.abs(c.x-v.x)>.1)v.face=c.x>v.x?1:-1}
+  if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'){
+    if(st==='go'&&!taskValid(v,v.task)){dropTask(v);return}
+    const ox=v.x,oy=v.y,r=followPath(v,dt,2.6);drain(v,Math.hypot(v.x-ox,v.y-oy)*.15);
+    if(r==='blocked'){if(st==='go')v.task=null;v.state='idle';v.think=.1;return}
+    if(r!==true)return;
+    if(st==='go'){v.state='work';v.hitT=0;v.fishT=0;const t=v.task;
+      const cx=t.kind==='build'||t.kind==='cook'?t.b.x+t.b.w/2:t.kind==='fish'?t.w%W+.5:t.i%W+.5;if(Math.abs(cx-v.x)>.1)v.face=cx>v.x?1:-1}
+    else if(st==='deliver')deposit(v);
+    else if(st==='toEat'){v.state='eat';v.hitT=0}
+    else{v.state='rest';v.think=.3}
     return}
-  if(v.state==='deliver'||v.state==='toRest'){
-    const r=followPath(v,dt,speed);
-    if(r==='blocked'){v.state='idle';v.think=.1;return}
-    if(r===true){
-      if(v.state==='deliver'){S.res[v.carry.type]+=v.carry.amt;if(onScreen(v)){addFloat(v.x*T,v.y*T-24,'+'+v.carry.amt,v.carry.type);sfx('coin')}v.carry=null;v.state='idle';v.think=0;hud()}
-      else{v.state='rest';v.think=.3}}
-    return}
-  if(v.state==='work'){
-    if(!jobValid(v.job)){v.job=null;v.state='idle';v.think=0;return}
-    const iv=hitIv(v);v.hitT+=dt*work;if(v.hitT<iv)return;v.hitT-=iv;
-    const j=v.job;
-    if(j.kind==='build'){buildHit(j.b,v);return}
-    const y=hitTile(j.i,v);
-    if(y){v.carry=y;v.job=null;v.state='idle';v.think=0}
+  if(st==='eat'){v.hitT+=dt;if(v.hitT>=1.6){eat(v);v.state='idle';v.think=0}return}
+  if(st==='work'){
+    const t=v.task;if(!taskValid(v,t)){dropTask(v);return}
+    if(t.kind==='fish'){workFish(v,dt*work);return}
+    if(t.kind==='cook'){workCook(v,dt*work);return}
+    const iv=t.kind==='build'?HIT:GATHER_HIT;v.hitT+=dt*work;if(v.hitT<iv)return;v.hitT-=iv;
+    if(t.kind==='build'){drain(v,.5);buildHit(t.b,v);return}
+    drain(v,.8);const y=hitTile(t.i,v);
+    if(y){v.carry=y;v.task=null;v.state='idle';v.think=0}
   }
+}
+function workFish(v,dt){
+  v.hitT+=dt;v.fishT+=dt;
+  if(v.hitT>=1.2){v.hitT=0;drain(v,.3);
+    if(rnd()<.22){v.catch++;const w=v.task.w,wx=w%W*T+8,wy=(w/W|0)*T+8;
+      if(onScreen(v)){burst(wx,wy,8,['#ffffff','#bfe3f7','#86b8d8']);sfx('splash');addFloat(wx,wy-10,'+1','fish')}}}
+  if(v.catch>=3||(v.fishT>30&&v.catch>0)){v.carry={fish:v.catch};v.catch=0;v.task=null;v.state='idle';v.think=0}
+}
+function workCook(v,dt){
+  if(!v.cooking){if(S.res.fish>0){S.res.fish--;v.cooking=true;v.hitT=0;hud()}else{v.task=null;v.state='idle';v.think=.5;return}}
+  v.hitT+=dt;drain(v,.12*dt);
+  if(rnd()<dt*3&&onScreen(v)){const hx=v.x*T+v.face*7;parts.push({x:hx,y:v.y*T-10,vx:(rnd()-.5)*4,vy:-8,g:-2,life:1,max:1,col:'#f0f0f0',smoke:true})}
+  if(v.hitT>=4){v.cooking=false;S.res.meal++;S.cooked=(S.cooked||0)+1;if(onScreen(v)){addFloat(v.x*T,v.y*T-26,'+1','meal');sfx('coin')}hud()}
+}
+function deposit(v){
+  let k=0;for(const[t,a]of Object.entries(v.carry)){S.res[t]+=a;if(onScreen(v))addFloat(v.x*T,v.y*T-24-k*9,'+'+a,t,(t==='copper'||t==='coal')?'#ffd38a':null);k++}
+  if(onScreen(v))sfx('coin');v.carry=null;v.state='idle';v.think=0;hud();
+}
+function eat(v){
+  if(S.res.meal>0){S.res.meal--;v.food=100;if(onScreen(v))addFloat(v.x*T,v.y*T-26,'Yum!','meal','#fff6c8')}
+  else if(S.res.fish>0){S.res.fish--;v.food=Math.min(100,v.food+40);if(onScreen(v))addFloat(v.x*T,v.y*T-26,'Raw...','fish','#d8ecf8')}
+  else return;
+  if(onScreen(v))sfx('eat');hud();
 }
 function buildHit(b,who){
   b.prog=Math.min(BUILD[b.type].hits,b.prog+1);
@@ -454,11 +534,21 @@ function buildHit(b,who){
     burst((b.x+b.w/2)*T,(b.y+b.h/2)*T-8,26,['#f4d35e','#ffffff','#f7a8c4','#7cc46a']);
     addFloat((b.x+b.w/2)*T,b.y*T-14,BUILD[b.type].name+'!',null);hud()}
 }
+function assignJob(job,delta){
+  if(delta>0){
+    const cand=folk.filter(v=>v.job==='idle').sort((a,b)=>(a.carry?1:0)-(b.carry?1:0));
+    if(!cand.length){sfx('no');return}cand[0].job=job;cand[0].think=0;sfx('mark');
+  }else{
+    const cand=folk.filter(v=>v.job===job).sort((a,b)=>(a.carry?1:0)-(b.carry?1:0)||(a.state==='work'?1:0)-(b.state==='work'?1:0));
+    if(!cand.length)return;cand[0].job='idle';sfx('unmark');
+  }
+  hud();
+}
 
 // ================= building =================
 function addBuilding(type,x,y,done,prog){
   const d=BUILD[type],b={type,x,y,w:d.w,h:d.h,done,prog:prog||0};S.buildings.push(b);const id=S.buildings.length;
-  for(let j=y;j<y+d.h;j++)for(let k=x;k<x+d.w;k++){const i=j*W+k;S.bmap[i]=id;S.obj[i]=O_NONE;S.mark[i]=0;if(S.ground[i]===G_ROAD)S.ground[i]=G_GRASS}
+  for(let j=y;j<y+d.h;j++)for(let k=x;k<x+d.w;k++){const i=j*W+k;S.bmap[i]=id;S.obj[i]=O_NONE;if(S.ground[i]===G_ROAD)S.ground[i]=G_GRASS}
   return b;
 }
 function anchor(type,wx,wy){const d=BUILD[type];return{x:Math.round(wx/T-d.w/2),y:Math.round(wy/T-d.h/2)}}
@@ -479,28 +569,15 @@ function place(type,wx,wy,quiet){
   else{addBuilding(type,a.x,a.y,false);sfx('place');burst((a.x+d.w/2)*T,(a.y+d.h)*T-4,10,['#d4a26a','#efe0bd']);if(BUILD[type].once)setTool('look')}
   hud();return true;
 }
-function removeBuilding(b,refundAll){
-  const d=BUILD[b.type];
-  if(refundAll)pay(d.cost,1);else for(const[k,v]of Object.entries(d.cost))S.res[k]+=Math.floor(v/2);
-  b.removed=true;S.buildings[S.buildings.indexOf(b)]=null;
-  for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)S.bmap[y*W+x]=0;
-  burst((b.x+b.w/2)*T,(b.y+b.h)*T-8,14,['#d4a26a','#8b8f9a','#efe0bd']);
-}
-function applySel(a,b,mode){
-  const x0=Math.max(0,Math.min(a.x,b.x)),x1=Math.min(W-1,Math.max(a.x,b.x)),y0=Math.max(0,Math.min(a.y,b.y)),y1=Math.min(H-1,Math.max(a.y,b.y));
-  const single=x0===x1&&y0===y1;let n=0;const seen=new Set();
-  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*W+x;
-    if(mode==='gather'){if((S.obj[i]===O_TREE||S.obj[i]===O_ROCK)&&!S.mark[i]){S.mark[i]=1;n++}}
-    else{
-      if(S.mark[i]){S.mark[i]=0;n++}
-      const bb=bAt(i);
-      if(bb&&!seen.has(bb)){seen.add(bb);if(!bb.done){removeBuilding(bb,true);n++}else if(single&&bb.type!=='fire'){removeBuilding(bb,false);n++}}
-      if(S.ground[i]===G_ROAD){S.ground[i]=G_GRASS;S.res.stone++;n++}
-    }}
-  if(mode==='gather'&&single&&!n&&(S.obj[y0*W+x0]===O_TREE||S.obj[y0*W+x0]===O_ROCK)){S.mark[y0*W+x0]=0;sfx('unmark');return}
-  sfx(n?(mode==='gather'?'mark':'unmark'):'no');
-  if(n&&mode==='gather'&&!single)addFloat((x0+x1+1)/2*T,y0*T-4,n+' to clear',null,'#ffe066');
-  hud();
+function removeAt(i){
+  const b=bAt(i);
+  if(b&&b.type!=='fire'){const d=BUILD[b.type];
+    if(!b.done)pay(d.cost,1);else for(const[k,v]of Object.entries(d.cost))S.res[k]+=Math.floor(v/2);
+    b.removed=true;S.buildings[S.buildings.indexOf(b)]=null;
+    for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)S.bmap[y*W+x]=0;
+    burst((b.x+b.w/2)*T,(b.y+b.h)*T-8,14,['#d4a26a','#8b8f9a','#efe0bd']);sfx('unmark');hud();return true}
+  if(S.ground[i]===G_ROAD){S.ground[i]=G_GRASS;S.res.stone++;sfx('unmark');hud();return true}
+  return false;
 }
 
 // ================= Little Wolf =================
@@ -540,7 +617,10 @@ function sfx(n){
     case'build':tone(240,170,.05,'square',.03);noise(.04,1400,.05);break;
     case'fall':noise(.28,450,.12);tone(140,60,.22,'triangle',.06);break;
     case'coin':tone(880,1320,.08,'sine',.04);break;
-    case'mark':tone(660,880,.05,'square',.025);tone(880,1100,.05,'square',.02,.05);break;
+    case'ore':[988,1319,1568].forEach((f,k)=>tone(f,f,.09,'triangle',.05,k*.07));break;
+    case'splash':noise(.15,2200,.07);tone(500,900,.08,'sine',.03);break;
+    case'eat':tone(300,250,.06,'square',.03);tone(330,260,.06,'square',.03,.12);break;
+    case'mark':tone(660,880,.05,'square',.025);break;
     case'unmark':tone(500,330,.05,'square',.03);break;
     case'place':tone(392,392,.07,'square',.04);tone(523,523,.09,'square',.04,.07);break;
     case'done':[523,659,784,1047].forEach((f,k)=>tone(f,f,.1,'square',.035,k*.08));break;
@@ -552,14 +632,17 @@ function sfx(n){
 
 // ================= camera / input =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-let cam={x:0,y:0},zoom=innerWidth<700?2:3,dpr=1,scale=3;
-function resize(){dpr=window.devicePixelRatio||1;cv.width=innerWidth*dpr|0;cv.height=innerHeight*dpr|0;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';scale=Math.max(1,Math.round(zoom*dpr));clampCam()}
+let cam={x:0,y:0},zoom=innerWidth<700?2:3,zoomT=zoom,zAnchor={sx:0,sy:0},dpr=1,scale=3;
+const ZMIN=1,ZMAX=6;
+function computeScale(){scale=Math.max(.5,Math.round(zoom*dpr*16)/16)}
+function resize(){dpr=window.devicePixelRatio||1;cv.width=innerWidth*dpr|0;cv.height=innerHeight*dpr|0;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';computeScale();clampCam()}
 addEventListener('resize',resize);
 function viewW(){return cv.width/scale}function viewH(){return cv.height/scale}
 function clampCam(){const vw=viewW(),vh=viewH();cam.x=Math.max(-vw/2,Math.min(W*T-vw/2,cam.x));cam.y=Math.max(-vh/2,Math.min(H*T-vh/2,cam.y))}
-function setZoom(z,sx=innerWidth/2,sy=innerHeight/2){const w=toWorld(sx,sy);zoom=Math.max(1,Math.min(6,z));resize();cam.x=w.x-sx*dpr/scale;cam.y=w.y-sy*dpr/scale;clampCam()}
 function toWorld(sx,sy){return{x:cam.x+sx*dpr/scale,y:cam.y+sy*dpr/scale}}
 function toTile(w){return{x:Math.floor(w.x/T),y:Math.floor(w.y/T)}}
+function applyZoom(z,sx,sy){const w=toWorld(sx,sy);zoom=z;computeScale();cam.x=w.x-sx*dpr/scale;cam.y=w.y-sy*dpr/scale;clampCam()}
+function zoomTo(z,sx=innerWidth/2,sy=innerHeight/2){zoomT=Math.max(ZMIN,Math.min(ZMAX,z));zAnchor={sx,sy}}
 function onScreen(a){if(!a)return false;const x=a.x*T,y=a.y*T;return x>cam.x-24&&x<cam.x+viewW()+24&&y>cam.y-32&&y<cam.y+viewH()+32}
 function centerOn(tx,ty){cam.x=tx*T-viewW()/2;cam.y=ty*T-viewH()/2;clampCam()}
 function centerOnFire(){const f=fire();centerOn(f.x+1,f.y+1)}
@@ -567,8 +650,8 @@ function centerOnFire(){const f=fire();centerOn(f.x+1,f.y+1)}
 const keys={};
 addEventListener('keydown',e=>{
   ensureAudio();const k=e.key.toLowerCase();keys[k]=true;
-  if(k==='escape'){sel=null;setTool('look')}if(k==='m')toggleMute();
-  if(k==='+'||k==='=')setZoom(zoom+1);if(k==='-')setZoom(zoom-1);
+  if(k==='escape')setTool('look');if(k==='m')toggleMute();
+  if(k==='+'||k==='=')zoomTo(zoomT*1.2);if(k==='-')zoomTo(zoomT/1.2);
   const n=parseInt(k);if(n>=1&&n<=TOOLS.length)setTool(TOOLS[n-1].id);
   if(k.startsWith('arrow'))e.preventDefault();
 });
@@ -579,11 +662,11 @@ const ptrs=new Map();let drag=null;
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{
   ensureAudio();cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===2){sel=null;const[a,b]=[...ptrs.values()];drag={mode:'pinch',d:Math.hypot(a.x-b.x,a.y-b.y),mx:(a.x+b.x)/2,my:(a.y+b.y)/2};return}
+  if(ptrs.size===2){const[a,b]=[...ptrs.values()];drag={mode:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:zoom,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};return}
   if(ptrs.size>2)return;
   const w=toWorld(e.clientX,e.clientY);hover=w;
   if(e.button===1||e.button===2||tool==='look'){drag={mode:'pan',x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY};return}
-  if(tool==='gather'||tool==='cancel'){const t=toTile(w);sel={a:t,b:t,mode:tool};drag={mode:'sel'};return}
+  if(tool==='remove'){drag={mode:'remove',last:-1};removeDrag(w,true);return}
   if(tool==='road'){drag={mode:'road',last:-1};roadAt(w);return}
   drag=null;place(tool,w.x,w.y);
 });
@@ -591,32 +674,34 @@ cv.addEventListener('pointermove',e=>{
   if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const w=toWorld(e.clientX,e.clientY);hover=w;if(!drag)return;
   if(drag.mode==='pinch'&&ptrs.size===2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
-    cam.x-=(mx-drag.mx)*dpr/scale;cam.y-=(my-drag.my)*dpr/scale;drag.mx=mx;drag.my=my;clampCam();
-    if(d/drag.d>1.35){setZoom(zoom+1,mx,my);drag.d=d}else if(d/drag.d<.74){setZoom(zoom-1,mx,my);drag.d=d}return}
+    cam.x-=(mx-drag.mx)*dpr/scale;cam.y-=(my-drag.my)*dpr/scale;drag.mx=mx;drag.my=my;
+    const z=Math.max(ZMIN,Math.min(ZMAX,drag.z0*d/drag.d0));zoomT=z;applyZoom(z,mx,my);return}
   if(drag.mode==='pan'){cam.x-=(e.clientX-drag.x)*dpr/scale;cam.y-=(e.clientY-drag.y)*dpr/scale;drag.x=e.clientX;drag.y=e.clientY;clampCam();return}
-  if(drag.mode==='sel'&&sel){sel.b=toTile(w);return}
   if(drag.mode==='road')roadAt(w);
+  if(drag.mode==='remove')removeDrag(w,false);
 });
 function endPtr(e){
   ptrs.delete(e.pointerId);
-  if(drag&&drag.mode==='sel'&&sel&&e.type==='pointerup'){applySel(sel.a,sel.b,sel.mode)}
   if(drag&&drag.mode==='pan'&&e.type==='pointerup'&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<6){const w=toWorld(e.clientX,e.clientY);if(Math.hypot(w.x-WF.x*T,w.y-(WF.y*T-6))<11)petWolf()}
-  sel=null;if(ptrs.size===0||(drag&&drag.mode==='pinch'))drag=null;
+  if(ptrs.size===0||(drag&&drag.mode==='pinch'))drag=null;
 }
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
 cv.addEventListener('pointerleave',()=>{if(!drag)hover=null});
-cv.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom+(e.deltaY<0?1:-1),e.clientX,e.clientY)},{passive:false});
+cv.addEventListener('wheel',e=>{e.preventDefault();const dy=e.deltaMode===1?e.deltaY*16:e.deltaY;const f=Math.max(.8,Math.min(1.25,Math.exp(-dy*.0012)));zoomTo(zoomT*f,e.clientX,e.clientY)},{passive:false});
 function roadAt(w){const t=toTile(w),i=t.y*W+t.x;if(!inb(t.x,t.y)||i===drag.last)return;drag.last=i;place('road',w.x,w.y,true)}
+function removeDrag(w,first){const t=toTile(w),i=t.y*W+t.x;if(!inb(t.x,t.y)||i===drag.last)return;drag.last=i;
+  const b=bAt(i);if(b&&!first&&b.done)return; // only tap removes finished buildings
+  if(!removeAt(i)&&first)sfx('no')}
 
 // minimap
 const mini=document.getElementById('mini'),mctx=mini.getContext('2d');mini.width=W;mini.height=H;const mimg=mctx.createImageData(W,H);
 if(innerWidth<700)mini.hidden=true;
-const MCOL={water:[75,143,208],sand:[230,210,147],grass:[116,182,90],road:[196,165,116],tree:[47,107,58],rock:[139,143,154],stump:[150,170,90],build:[194,85,62],fire:[255,170,60],mark:[255,224,102]};
+const MCOL={water:[75,143,208],sand:[230,210,147],grass:[116,182,90],road:[196,165,116],tree:[47,107,58],rock:[139,143,154],stump:[150,170,90],build:[194,85,62],fire:[255,170,60]};
 function drawMini(){
   if(mini.hidden)return;const d=mimg.data;
   for(let i=0;i<N;i++){const g=S.ground[i],o=S.obj[i],b=bAt(i);let c;
-    if(b)c=b.type==='fire'?MCOL.fire:MCOL.build;else if(g===G_WATER)c=MCOL.water;else if(o===O_TREE)c=S.mark[i]?MCOL.mark:MCOL.tree;else if(o===O_ROCK)c=S.mark[i]?MCOL.mark:MCOL.rock;
-    else if(g===G_ROAD)c=MCOL.road;else if(g===G_SAND)c=MCOL.sand;else c=MCOL.grass;
+    if(b)c=b.type==='fire'?MCOL.fire:MCOL.build;else if(g===G_WATER)c=MCOL.water;else if(o===O_TREE)c=MCOL.tree;else if(o===O_ROCK)c=MCOL.rock;
+    else if(g===G_ROAD)c=MCOL.road;else if(g===G_SAND)c=MCOL.sand;else if(o===O_STUMP)c=MCOL.stump;else c=MCOL.grass;
     d[i*4]=c[0];d[i*4+1]=c[1];d[i*4+2]=c[2];d[i*4+3]=255}
   mctx.putImageData(mimg,0,0);mctx.fillStyle='#ffffff';for(const v of folk)mctx.fillRect(v.x|0,v.y|0,1,1);
   mctx.strokeStyle='rgba(255,255,255,.9)';mctx.lineWidth=1;mctx.strokeRect(Math.round(cam.x/T)+.5,Math.round(cam.y/T)+.5,Math.round(viewW()/T),Math.round(viewH()/T));
@@ -627,23 +712,28 @@ mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect();cen
 // ================= UI =================
 const TOOLS=[
   {id:'look',name:'Look',icon:ICON.hand,tip:'Drag to look around. Tap Little Wolf to pet them'},
-  {id:'gather',name:'Gather',icon:ICON.axe,tip:'Drag a box over trees and rocks to clear them'},
-  {id:'cancel',name:'Cancel',icon:ICON.x,tip:'Drag to unmark. Tap a site, road or building to remove it'},
+  {id:'remove',name:'Remove',icon:ICON.x,tip:'Tap a site, road or building to take it down'},
   {id:'house',icon:BSPR.house},{id:'store',icon:BSPR.store},{id:'bench',icon:BSPR.bench},{id:'dog',icon:BSPR.dog},{id:'road',icon:ROAD}
 ];
 const bar=document.getElementById('bar');
-function costHTML(c){return Object.entries(c).map(([k,v])=>`${v}<img src="${ICON[k].toDataURL()}" alt="${k}">`).join(' ')}
+const iconURL={};for(const k of[...RES.map(r=>r[0]),'folk'])iconURL[k]=ICON[k].toDataURL();
+function costHTML(c){return Object.entries(c).map(([k,v])=>`${v}<img src="${iconURL[k]}" alt="${k}">`).join(' ')}
 TOOLS.forEach((t,k)=>{
   const d=BUILD[t.id],b=document.createElement('button');b.className='tool';b.dataset.id=t.id;b.title=d?d.tip:t.tip;
   b.innerHTML=`<kbd>${k+1}</kbd><img src="${t.icon.toDataURL()}" alt=""><span>${d?d.name:t.name}</span>`+(d?`<span class="cost">${costHTML(d.cost)}</span>`:'');
   b.addEventListener('click',()=>{ensureAudio();setTool(tool===t.id&&t.id!=='look'?'look':t.id)});bar.appendChild(b);
 });
-function setTool(id){tool=id;sel=null;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));cv.style.cursor=id==='look'?'grab':'crosshair'}
-document.getElementById('ic-wood').src=ICON.wood.toDataURL();
-document.getElementById('ic-stone').src=ICON.stone.toDataURL();
-document.getElementById('ic-folk').src=ICON.folk.toDataURL();
-document.getElementById('zin').onclick=()=>setZoom(zoom+1);
-document.getElementById('zout').onclick=()=>setZoom(zoom-1);
+function setTool(id){tool=id;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));cv.style.cursor=id==='look'?'grab':'crosshair'}
+const resEl=document.getElementById('res');
+resEl.innerHTML=RES.map(([k,n])=>`<div class="r" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('')+`<div class="r" title="Villagers"><img src="${iconURL.folk}" alt="Villagers"><span id="n-folk">0</span></div>`;
+const jlist=document.getElementById('jlist');
+jlist.innerHTML=JOBS.map(j=>`<div class="job"><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer ${j.name.toLowerCase()}ers">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More ${j.name.toLowerCase()}ers">+</button></div>`).join('')+'<div id="hungry"></div>';
+jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
+const jobsEl=document.getElementById('jobs');
+document.getElementById('jh').onclick=()=>{jobsEl.classList.toggle('closed');document.getElementById('jh').setAttribute('aria-expanded',!jobsEl.classList.contains('closed'))};
+if(innerWidth<600&&innerHeight<700)jobsEl.classList.add('closed');
+document.getElementById('zin').onclick=()=>zoomTo(zoomT*1.25);
+document.getElementById('zout').onclick=()=>zoomTo(zoomT/1.25);
 document.getElementById('mapb').onclick=()=>{mini.hidden=!mini.hidden;drawMini()};
 const sndB=document.getElementById('snd');
 function toggleMute(){muted=!muted;sndB.textContent=muted?'×':'♪'}
@@ -654,24 +744,29 @@ resetB.onclick=()=>{
   if(Date.now()-resetArm>3000){resetArm=Date.now();resetB.textContent='Tap again to erase town';setTimeout(()=>{resetB.textContent='New map'},3000);return}
   resetArm=0;resetB.textContent='New map';newGame();save();hud();document.getElementById('help').classList.remove('show')};
 function hud(){
-  document.getElementById('n-wood').textContent=S.res.wood;
-  document.getElementById('n-stone').textContent=S.res.stone;
+  for(const[k]of RES)document.getElementById('n-'+k).textContent=S.res[k];
   document.getElementById('n-folk').textContent=folk.length+'/'+popCap();
+  const idle=folk.filter(v=>v.job==='idle').length;
+  document.getElementById('idle').textContent='Idle '+idle;
+  for(const j of JOBS)document.getElementById('jc-'+j.id).textContent=folk.filter(v=>v.job===j.id).length;
+  jlist.querySelectorAll('.jb').forEach(b=>{b.disabled=+b.dataset.d>0?idle===0:!folk.some(v=>v.job===b.dataset.j)});
+  const hungry=folk.filter(v=>v.food<=0).length,low=folk.filter(v=>v.food>0&&v.food<HUNGRY_AT).length;
+  document.getElementById('hungry').textContent=hungry?`${hungry} starving! Need food`:low&&S.res.meal+S.res.fish===0?`${low} hungry, no food left`:'';
   document.querySelectorAll('.tool').forEach(b=>{const d=BUILD[b.dataset.id];if(!d)return;
     b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.classList.toggle('done',!!(d.once&&count(b.dataset.id,false)))});
 }
 const HINTS=[
-  'Pick Gather, then drag a box over trees and rocks. Your villagers will clear it!',
-  'They carry everything back to the campfire. Gather 12 wood, then place a House.',
-  'Villagers will build it for you. Each House brings 2 more villagers.',
-  'Working far away? A Storehouse there saves long walks to the fire.',
+  'Tap + next to a job to put villagers to work. Try Chop and Mine!',
+  'Work and walking make villagers hungry. Assign a Fisher and a Cook to keep meals coming.',
+  'Save 12 wood and place a House. Each House brings 2 more villagers.',
+  "Trees and rocks don't grow back, so villagers will roam further. A Storehouse saves long walks.",
   'Build a Workbench so everyone works faster.',
   'Little Wolf would love a Doghouse to nap in...',
   'Your little town is growing!'
 ];
 const hintEl=document.getElementById('hint');let hintShown=-1,hintT=0;
 function checkHint(){
-  const adv=[S.mark.some(m=>m)||S.res.wood>0, count('house',false)>0, count('house')>0, count('store',false)>0||count('bench',false)>0,
+  const adv=[folk.some(v=>v.job!=='idle'), (S.cooked||0)>0, count('house')>0, count('store',false)>0||count('bench',false)>0,
     count('bench')>0, count('dog')>0, false][S.step];
   if(adv&&S.step<HINTS.length-1)S.step++;
   if(hintShown!==S.step){hintShown=S.step;hintEl.textContent=HINTS[S.step];hintEl.classList.remove('hide');hintT=0}
@@ -679,15 +774,15 @@ function checkHint(){
 }
 
 // ================= save / load =================
-function save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
-  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),mark:Array.from(S.mark),res:S.res,step:S.step,pop:folk.length,
-  cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog])}))}catch(e){}}
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==2||d.ground.length!==N)return false;
+function save(){try{localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,
+  folk:folk.map(v=>[v.job,Math.round(v.food)]),cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog])}))}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
-    mark:Uint8Array.from(d.mark),bmap:new Int16Array(N),buildings:[],res:d.res,step:d.step||0};
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0};
   for(const[t,x,y,dn,pr]of d.b)if(BUILD[t])addBuilding(t,x,y,!!dn,pr);
   if(!fire())return false;
-  folk=[];for(let k=0;k<Math.max(5,d.pop||5);k++)spawnFolk(k===0);
+  folk=[];(d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]]).forEach(([j,f],k)=>spawnFolk(k===0,j,f));
   resetActors();if(d.cam){cam.x=d.cam[0];cam.y=d.cam[1];clampCam()}else centerOnFire();return true}catch(e){return false}}
 addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 addEventListener('pagehide',save);
@@ -695,14 +790,13 @@ addEventListener('pagehide',save);
 // ================= update =================
 let tick=0,saveT=0,smokeT=0,miniT=0,sparkT=0;
 function update(dt){
+  if(Math.abs(zoomT-zoom)>.0005&&!(drag&&drag.mode==='pinch')){const k=1-Math.pow(.00005,dt),nz=Math.abs(zoomT-zoom)<.004?zoomT:zoom+(zoomT-zoom)*k;applyZoom(nz,zAnchor.sx,zAnchor.sy)}
   const kx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),ky=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
   if(kx||ky){const sp=700*dpr/scale*dt;cam.x+=kx*sp;cam.y+=ky*sp;clampCam()}
 
-  anyMarks=false;for(let i=0;i<N;i++)if(S.mark[i]){anyMarks=true;break}
   for(const v of folk)updFolk(v,dt);
   updWolf(dt);
 
-  // new villagers arrive while there's room
   if(folk.length<popCap()){spawnT+=dt;if(spawnT>12){spawnT=0;const v=spawnFolk(false);addFloat(v.x*T,v.y*T-26,'Hello!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}else spawnT=0;
 
   for(const p of parts){p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
@@ -716,12 +810,10 @@ function update(dt){
     parts.push({x:b.x*T+23,y:(b.y+b.h)*T-40+8,vx:(rnd()-.3)*6,vy:-10,g:-2,life:2.2,max:2.2,col:'#e6e6e6',sz:2,smoke:true})}
   sparkT+=dt;if(sparkT>.18){sparkT=0;const f=fire();if(onScreen({x:f.x+1,y:f.y+1}))parts.push({x:f.x*T+16+(rnd()-.5)*6,y:f.y*T+14,vx:(rnd()-.5)*8,vy:-18-rnd()*14,g:-4,life:.9,max:.9,col:rnd()<.5?'#ffd56b':'#ff9f43'})}
 
+  // once a second: rubble settles (nothing grows back), hints, hud
   tick+=dt;if(tick>=1){tick-=1;
-    for(let i=0;i<N;i++){const o=S.obj[i];if(o!==O_STUMP&&o!==O_SAP&&o!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]>0)continue;
-      if(o===O_STUMP){S.obj[i]=O_SAP;S.timer[i]=90+rnd()*90}
-      else if(o===O_SAP){const busy=i===tileOf(WF)||folk.some(v=>tileOf(v)===i||v.path.includes(i));if(busy)S.timer[i]=5;else setObj(i,O_TREE)}
-      else S.obj[i]=O_NONE}
-    checkHint();hintT++;}
+    for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
+    checkHint();hintT++;hud()}
   miniT+=dt;if(miniT>.4){miniT=0;drawMini()}
   saveT+=dt;if(saveT>5){saveT=0;save()}
 }
@@ -740,9 +832,7 @@ function render(){
       if(g===G_ROAD){ctx.drawImage(ROAD,px,py);ctx.fillStyle='#9b7d50';
         if(y===0||S.ground[i-W]!==G_ROAD)ctx.fillRect(px,py,16,1);if(y===H-1||S.ground[i+W]!==G_ROAD)ctx.fillRect(px,py+15,16,1);
         if(x===0||S.ground[i-1]!==G_ROAD)ctx.fillRect(px,py,1,16);if(x===W-1||S.ground[i+1]!==G_ROAD)ctx.fillRect(px+15,py,1,16)}}}
-  // warm light around the fire
   const f=fire();ctx.fillStyle='rgba(255,190,90,.07)';const fx=f.x*T+16,fy=f.y*T+18;for(const r of[44,34,24])ctx.fillRect(fx-r,fy-r*.7,r*2,r*1.4);
-  // sorted drawables
   const list=[];
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*W+x;if(S.obj[i])list.push({y:y+.75,k:0,i,x,ty:y})}
   for(const b of S.buildings)if(b&&b.x<=x1+1&&b.x+b.w>=x0&&b.y<=y1+2&&b.y+b.h>=y0)list.push({y:b.y+b.h-.05,k:1,b});
@@ -750,20 +840,12 @@ function render(){
   list.push({y:WF.y,k:3});
   list.sort((a,b)=>a.y-b.y);
   for(const d of list){if(d.k===0)drawObj(d.i,d.x,d.ty);else if(d.k===1)drawBuilding(d.b);else if(d.k===2)drawFolk(d.a);else drawWolf()}
-  // marks
-  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*W+x;if(!S.mark[i])continue;const tr=S.obj[i]===O_TREE;
-    marks(x*T,y*T-(tr?6:0),16,tr?22:16,tr?'#ffe066':'#bfe9ff')}
   for(const b of flies){const px=Math.round(b.x*T),py=Math.round(b.y*T-10+Math.sin(b.ph*3)*3),fl=(b.ph*10|0)%2;ctx.fillStyle=b.col;
     if(fl){ctx.fillRect(px-2,py,2,2);ctx.fillRect(px+1,py,2,2)}else{ctx.fillRect(px-1,py,1,2);ctx.fillRect(px+1,py,1,2)}ctx.fillStyle='#2b1d14';ctx.fillRect(px,py,1,2)}
-  // selection box / hover
-  if(sel){const xa=Math.min(sel.a.x,sel.b.x),xb=Math.max(sel.a.x,sel.b.x),ya=Math.min(sel.a.y,sel.b.y),yb=Math.max(sel.a.y,sel.b.y),g=sel.mode==='gather';
-    ctx.fillStyle=g?'rgba(255,224,102,.18)':'rgba(255,90,90,.2)';ctx.fillRect(xa*T,ya*T,(xb-xa+1)*T,(yb-ya+1)*T);
-    ctx.fillStyle=g?'#ffe066':'#ff7a6b';const X=xa*T,Y=ya*T,Wd=(xb-xa+1)*T,Hd=(yb-ya+1)*T,o=(time*12|0)%4;
-    for(let k=-o;k<Wd;k+=4){if(k>=0){ctx.fillRect(X+k,Y,2,1);ctx.fillRect(X+Wd-1-k,Y+Hd-1,2,1)}}for(let k=-o;k<Hd;k+=4){if(k>=0){ctx.fillRect(X+Wd-1,Y+k,1,2);ctx.fillRect(X,Y+Hd-1-k,1,2)}}}
-  else if(hover&&BUILD[tool]){const d=BUILD[tool],a=tool==='road'?toTile(hover):anchor(tool,hover.x,hover.y),ok=canPlace(tool,a.x,a.y)&&afford(d.cost);
+  if(hover&&BUILD[tool]){const d=BUILD[tool],a=tool==='road'?toTile(hover):anchor(tool,hover.x,hover.y),ok=canPlace(tool,a.x,a.y)&&afford(d.cost);
     ctx.fillStyle=ok?'rgba(120,255,120,.28)':'rgba(255,90,90,.33)';ctx.fillRect(a.x*T,a.y*T,d.w*T,d.h*T);
     if(tool!=='road'){const sp=BSPR[tool];ctx.globalAlpha=.6;ctx.drawImage(sp,a.x*T,(a.y+d.h)*T-sp.height);ctx.globalAlpha=1}}
-  else if(hover&&(tool==='gather'||tool==='cancel')){const t=toTile(hover);ctx.strokeStyle=tool==='gather'?'rgba(255,255,255,.8)':'rgba(255,140,120,.9)';ctx.lineWidth=1;ctx.strokeRect(t.x*T+.5,t.y*T+.5,15,15)}
+  else if(hover&&tool==='remove'){const t=toTile(hover);ctx.strokeStyle='rgba(255,140,120,.9)';ctx.lineWidth=1;ctx.strokeRect(t.x*T+.5,t.y*T+.5,15,15)}
   for(const p of parts){const a=Math.min(1,p.life/p.max*1.5);
     if(p.heart){ctx.globalAlpha=a;ctx.drawImage(MINI.heart,Math.round(p.x-3),Math.round(p.y));ctx.globalAlpha=1;continue}
     ctx.globalAlpha=p.smoke?a*.7:a;ctx.fillStyle=p.col;const z=p.sz||1;ctx.fillRect(Math.round(p.x),Math.round(p.y),z+(p.smoke&&p.life<1?1:0),z)}
@@ -774,11 +856,9 @@ function render(){
     ctx.fillStyle='#2b1d14';ctx.fillText(fl.text,x+1,y+1);ctx.fillStyle=fl.col;ctx.fillText(fl.text,x,y)}
   ctx.globalAlpha=1;
 }
-function marks(x,y,w,h,col){ctx.globalAlpha=.85;ctx.fillStyle=col;
-  for(const[cx,cy,sx,sy]of[[x,y,1,1],[x+w-1,y,-1,1],[x,y+h-1,1,-1],[x+w-1,y+h-1,-1,-1]]){ctx.fillRect(Math.min(cx,cx+sx*2),cy,3,1);ctx.fillRect(cx,Math.min(cy,cy+sy*2),1,3)}ctx.globalAlpha=1}
 function drawObj(i,x,y){
   const o=S.obj[i],px=x*T,base=(y+1)*T-2;let spr;
-  if(o===O_TREE)spr=TREES[[0,0,1,1,2,3,0,1][S.varr[i]%8]];else if(o===O_ROCK)spr=S.hp[i]>3?ROCK:ROCK_S;else if(o===O_STUMP)spr=STUMP;else if(o===O_SAP)spr=SAPLING;else spr=RUBBLE;
+  if(o===O_TREE)spr=TREES[[0,0,1,1,2,3,0,1][S.varr[i]%8]];else if(o===O_ROCK)spr=S.hp[i]>4?ROCK:ROCK_S;else if(o===O_STUMP)spr=STUMP;else if(o===O_SAP)spr=SAPLING;else spr=RUBBLE;
   if(o===O_TREE||o===O_ROCK){ctx.fillStyle='rgba(20,50,10,.22)';ctx.fillRect(px+3,base-1,10,2);ctx.fillRect(px+5,base+1,6,1)}
   let sx=0;const st=time-shakeT[i];if(st<.25)sx=Math.round(Math.sin(st*70)*1.5);
   ctx.drawImage(spr,px+sx,base-spr.height);
@@ -797,10 +877,10 @@ function drawBuilding(b){
 }
 function drawFire(b){
   const px=b.x*T,py=b.y*T;
-  // stockpiles grow with what you've gathered
   const wt=S.res.wood>=60?3:S.res.wood>=20?2:S.res.wood>0?1:0,st=S.res.stone>=40?3:S.res.stone>=12?2:S.res.stone>0?1:0;
   for(let k=0;k<wt;k++){const yy=py+27-k*3;ctx.fillStyle='#2b1d14';ctx.fillRect(px-1,yy-1,9-k*2+2,4);ctx.fillStyle='#a8713f';ctx.fillRect(px,yy,9-k*2,2);ctx.fillStyle='#d4a26a';ctx.fillRect(px,yy,1,2)}
   for(let k=0;k<st;k++){const xx=px+24+(k%2)*3,yy=py+26-k*3;ctx.fillStyle='#2b1d14';ctx.fillRect(xx-1,yy-1,6,5);ctx.fillStyle='#9a9ea8';ctx.fillRect(xx,yy,4,3);ctx.fillStyle='#c9ccd3';ctx.fillRect(xx,yy,2,1)}
+  if(S.res.fish>0){ctx.drawImage(MINI.fish,px+2,py+2)}if(S.res.meal>0){ctx.drawImage(MINI.meal,px+22,py+2)}
   ctx.drawImage(BSPR.fire,px,py);
   const t=time*10,fl=k=>Math.round(Math.sin(t+k*1.7)*1.2+Math.sin(t*1.7+k)*.8);
   const cx=px+16,base=py+20;
@@ -815,9 +895,31 @@ function drawFolk(v){
   const img=v.spr[fr];
   if(v.face<0){ctx.save();ctx.translate(px+16,py);ctx.scale(-1,1);ctx.drawImage(img,0,0);ctx.restore()}else ctx.drawImage(img,px,py);
   const hx=v.face>0?px+13:px+2,hy=py+12;
-  if(v.state==='work'&&v.job){drawTool(hx,hy,v.job.kind==='rock'?'pick':v.job.kind==='build'?'hammer':'axe',v.hitT/hitIv(v),v.face);return}
-  if(v.carry){const it=v.carry.type==='wood'?LOG_HELD:MINI.stone;const x=v.face>0?hx-1:hx-(it.width-2);ctx.drawImage(it,x,hy-(v.carry.type==='wood'?3:1));return}
+  if(v.food<15){const bx=px+3,by=py-11,bb=Math.round(Math.sin(time*4));ctx.fillStyle='#2b1d14';ctx.fillRect(bx-1,by-1+bb,12,9);ctx.fillStyle='#ffffff';ctx.fillRect(bx,by+bb,10,7);ctx.fillRect(bx+4,by+7+bb,2,1);ctx.drawImage(MINI.meal,bx+1,by+1+bb)}
+  const t=v.task;
+  if(v.state==='work'&&t){
+    if(t.kind==='fish'){drawRod(v,hx,hy,t.w);return}
+    if(t.kind==='cook'){drawPan(hx,hy,v.face,v.cooking);return}
+    drawTool(hx,hy,t.kind==='rock'?'pick':t.kind==='build'?'hammer':'axe',v.hitT/(t.kind==='build'?HIT:GATHER_HIT),v.face);return}
+  if(v.state==='eat'){ctx.drawImage(MINI.meal,v.face>0?hx-2:hx-5,hy-4+((time*4|0)%2));return}
+  if(v.carry){const k=Object.keys(v.carry)[0];const it=k==='wood'?LOG_HELD:k==='fish'?MINI.fish:MINI.stone;const x=v.face>0?hx-1:hx-(it.width-2);ctx.drawImage(it,x,hy-(k==='wood'?3:1));
+    if(v.carry.copper||v.carry.coal){ctx.drawImage(MINI[v.carry.copper?'copper':'coal'],x+(v.face>0?3:-3),hy-5)}return}
   ctx.fillStyle='#2b1d14';ctx.fillRect(hx-(v.face>0?0:1),hy,2,2);ctx.fillStyle='#f5c9a0';ctx.fillRect(hx-(v.face>0?0:1),hy,1,1);
+}
+function drawRod(v,hx,hy,w){
+  const f=v.face,tipX=hx+f*6,tipY=hy-9;
+  for(let k=0;k<=6;k++){ctx.fillStyle=k<2?'#5a361e':'#a8713f';ctx.fillRect(hx+f*k,hy-Math.round(k*1.5),1,1)}
+  const bx=w%W*T+8+Math.round(Math.sin(v.anim*1.3)),by=(w/W|0)*T+8+Math.round(Math.sin(v.anim*3));
+  ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(tipX+.5,tipY+.5);ctx.quadraticCurveTo((tipX+bx)/2,Math.max(tipY,by)+3,bx+.5,by);ctx.stroke();
+  ctx.fillStyle='#ffffff';ctx.fillRect(bx,by-1,2,1);ctx.fillStyle='#d9534f';ctx.fillRect(bx,by,2,1);
+  ctx.fillStyle='#2b1d14';ctx.fillRect(hx-(f>0?0:1),hy,2,2);ctx.fillStyle='#f5c9a0';ctx.fillRect(hx-(f>0?0:1),hy,1,1);
+}
+function drawPan(hx,hy,f,cooking){
+  ctx.save();ctx.translate(hx,hy);if(f<0)ctx.scale(-1,1);
+  ctx.fillStyle='#5a361e';ctx.fillRect(0,0,4,1);ctx.fillStyle='#2b1d14';ctx.fillRect(3,-1,7,3);ctx.fillStyle='#5e6270';ctx.fillRect(4,-1,5,1);
+  if(cooking){ctx.fillStyle=((time*3|0)%2)?'#f2c25a':'#e08b4f';ctx.fillRect(5,-2,3,1)}
+  ctx.fillStyle='#2b1d14';ctx.fillRect(0,0,2,2);ctx.fillStyle='#f5c9a0';ctx.fillRect(0,0,1,1);
+  ctx.restore();
 }
 function drawTool(x,y,kind,phase,face){
   ctx.save();ctx.translate(x,y);if(face<0)ctx.scale(-1,1);
