@@ -1,999 +1,1771 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>First Marks</title>
-
-<!--
-  =====================================================================
-  FIRST MARKS — an incremental game about the invention of writing
-  =====================================================================
-  This whole game lives in this one file. It has three parts:
-
-    1. <style>   — how things LOOK (colors, sizes, layout)
-    2. <body>    — what is ON the page (boxes, buttons, text)
-    3. <script>  — how the game WORKS (numbers, rules, saving)
-
-  To play: double-click this file to open it in your web browser.
-  To change something: edit this file, save, and refresh the browser.
-
-  The easiest place to start tinkering is the "GAME SETTINGS" section
-  near the top of the <script> part below. It has three lists:
-  PEOPLE, DISCOVERIES and EVENTS.
-  =====================================================================
--->
-
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Summer&#39;s Reef</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-  /* ---------- Colors (change these to re-theme the whole game) ---------- */
-  :root {
-    --bg: #1a1410;          /* page background: dark earth */
-    --panel: #2a211a;       /* boxes */
-    --panel-light: #382c22;
-    --text: #f1e6d6;        /* main text: bone */
-    --muted: #b19f88;       /* dim text */
-    --marks: #e8a65d;       /* ochre — the color of Marks */
-    --ideas: #8fd3e8;       /* pale blue — the color of Ideas */
-    --good: #9bd67a;        /* "you can afford it" green */
-    --choice: #d9a3f0;      /* crossroads purple */
-    --rock-1: #5a4a3c;      /* cave wall colors */
-    --rock-2: #3b3029;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    padding: 16px;
-    background: var(--bg);
-    color: var(--text);
-    font-family: Georgia, "Times New Roman", serif;
-  }
-
-  h1 { text-align: center; margin: 4px 0 2px; color: var(--marks); letter-spacing: 2px; }
-  .era { text-align: center; color: var(--muted); margin-bottom: 16px; font-style: italic; }
-  h2 { margin: 0 0 10px; font-size: 1.05rem; color: var(--muted); font-weight: normal; }
-
-  .game {
-    max-width: 1100px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1.3fr 1fr;
-    gap: 16px;
-    align-items: start;
-  }
-  @media (max-width: 760px) {           /* phones: one column */
-    .game { grid-template-columns: 1fr; }
-  }
-
-  .panel { background: var(--panel); border-radius: 12px; padding: 14px; }
-  .panel + .panel { margin-top: 16px; }
-
-  /* ---------- Resource counters ---------- */
-  .resources { display: flex; gap: 12px; margin-bottom: 8px; }
-  .resource { flex: 1; background: var(--panel-light); border-radius: 10px; padding: 10px; text-align: center; }
-  .resource .big  { font-size: 1.8rem; font-weight: bold; }
-  .resource .small { font-size: 0.85rem; color: var(--muted); }
-  .marks-color { color: var(--marks); }
-  .ideas-color { color: var(--ideas); }
-  .hidden { display: none !important; }
-
-  /* Active temporary effects, like "Clicks ×5 (12s)" */
-  .effects { min-height: 1.4em; margin-bottom: 8px; font-size: 0.85rem; text-align: center; }
-  .effect { display: inline-block; margin: 0 4px; padding: 1px 8px; border-radius: 99px; background: var(--panel-light); }
-  .effect.good { color: var(--good); }
-  .effect.bad  { color: #f08a7a; }
-
-  /* ---------- Random event card ---------- */
-  .event {
-    background: #3a2c1f;
-    border: 2px solid var(--marks);
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 12px;
-    animation: pop 0.3s ease-out;
-  }
-  @keyframes pop { from { transform: scale(0.9); opacity: 0; } }
-  .event-title { font-weight: bold; font-size: 1.1rem; color: var(--marks); }
-  .event-text  { margin: 4px 0 10px; }
-  .event-choices { display: flex; gap: 8px; flex-wrap: wrap; }
-  .event-choices button {
-    flex: 1 1 180px; padding: 8px 10px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--muted); background: var(--panel-light); color: var(--text); font: inherit;
-  }
-  .event-choices button:hover { border-color: var(--good); }
-  .event-timer { height: 4px; background: var(--marks); border-radius: 2px; margin-top: 10px; transition: width 0.1s linear; }
-
-  /* ---------- The cave wall you click ---------- */
-  .wall {
-    position: relative;
-    height: 340px;
-    border-radius: 14px;
-    overflow: hidden;
-    cursor: crosshair;
-    user-select: none;
-    background:
-      radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.06), transparent 60%),
-      radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.35), transparent 60%),
-      linear-gradient(135deg, var(--rock-1), var(--rock-2));
-    box-shadow: inset 0 0 40px rgba(0,0,0,0.7);
-  }
-  .wall-hint {
-    position: absolute; inset: auto 0 10px 0; text-align: center;
-    color: rgba(255,255,255,0.45); font-size: 0.9rem; pointer-events: none;
-  }
-  /* One carved symbol on the wall */
-  .glyph {
-    position: absolute;
-    color: rgba(240, 215, 180, 0.75);
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.6), -1px -1px 0 rgba(255,255,255,0.08);
-    filter: grayscale(1) sepia(0.6) brightness(1.1);  /* makes emoji look carved */
-    pointer-events: none;
-    white-space: nowrap;
-    animation: carve 0.4s ease-out;
-  }
-  .glyph.painted { filter: saturate(0.7); }           /* after Pigments: real color */
-  @keyframes carve { from { opacity: 0; transform: scale(1.6); } }
-
-  /* The glowing crack you can click for a bonus */
-  .crack {
-    position: absolute; font-size: 30px; cursor: pointer; z-index: 2;
-    transform: translate(-50%, -50%);
-    animation: glow 0.8s ease-in-out infinite alternate;
-  }
-  @keyframes glow {
-    from { text-shadow: 0 0 6px #ffd36e; transform: translate(-50%, -50%) scale(1); }
-    to   { text-shadow: 0 0 22px #ffd36e, 0 0 40px #ff9f40; transform: translate(-50%, -50%) scale(1.25); }
-  }
-
-  /* ---------- Shop buttons (people + discoveries) ---------- */
-  .shop-item {
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    width: 100%; padding: 9px 12px; margin-bottom: 8px;
-    border: 2px solid transparent; border-radius: 10px;
-    background: var(--panel-light); color: var(--text);
-    font: inherit; text-align: left; cursor: pointer;
-  }
-  .shop-item.affordable { border-color: var(--good); }
-  .shop-item:disabled   { opacity: 0.5; cursor: not-allowed; }
-  .shop-item.crossroads { border-style: dashed; border-color: var(--choice); }
-  .shop-item.crossroads.affordable { border-style: solid; }
-  .shop-item .name  { font-weight: bold; }
-  .shop-item .desc  { font-size: 0.82rem; color: var(--muted); }
-  .shop-item .choice-label { font-size: 0.8rem; color: var(--choice); margin-bottom: 2px; }
-  .shop-item .owned { font-size: 1.3rem; font-weight: bold; min-width: 2ch; text-align: right; }
-
-  .discovered-list { font-size: 1.3rem; margin-top: 6px; letter-spacing: 4px; }
-  .discovered-list span { cursor: help; }
-  .unknown { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
-
-  /* ---------- Story log ---------- */
-  .log { margin-top: 12px; max-height: 170px; overflow-y: auto; font-size: 0.9rem; }
-  .log p { margin: 0 0 6px; color: var(--muted); }
-  .log p:first-child { color: var(--text); }
-
-  .footer { max-width: 1100px; margin: 16px auto 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
-  .footer button {
-    background: none; border: 1px solid var(--muted); color: var(--muted);
-    border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit;
-  }
-
-  /* Little "+1" that floats up when you click */
-  .floater {
-    position: fixed; pointer-events: none; font-weight: bold; color: var(--marks);
-    animation: floatUp 0.8s ease-out forwards; z-index: 5;
-  }
-  @keyframes floatUp { to { opacity: 0; transform: translateY(-45px); } }
+:root{--ink:#1d2b3a;--parch:#eef2e6;--parch2:#c9d6c4;--hi:#ffffff;--sel:#bfe9e4;--bad:#c0392b;--muted:#4f6a6a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0f2a3d;font-family:'Press Start 2P',monospace;color:var(--ink);-webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+canvas{display:block;image-rendering:pixelated;cursor:pointer}
+button{font:inherit;color:var(--ink)}
+button:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.panel{background:var(--parch);border:3px solid var(--ink);box-shadow:inset -3px -3px 0 var(--parch2),inset 3px 3px 0 var(--hi),0 3px 0 rgba(0,0,0,.35)}
+/* top-left: one panel for stock + jobs */
+#town{position:fixed;top:8px;left:8px;padding:8px 10px;display:flex;flex-direction:column;gap:8px;font-size:9px;max-width:calc(100% - 70px)}
+#res{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
+.r{display:flex;align-items:center;gap:5px}
+.r img{width:18px;height:18px;image-rendering:pixelated}
+.r[hidden]{display:none}
+#jobs{border-top:2px dashed var(--parch2);padding-top:6px;display:flex;flex-direction:column;gap:3px}
+.job{display:grid;grid-template-columns:18px 62px 20px 20px 20px;align-items:center;gap:5px;font-size:8px}
+.job img{width:18px;height:18px;image-rendering:pixelated}
+.jb{width:20px;height:20px;font-size:10px;padding:0;background:var(--parch);border:2px solid var(--ink);cursor:pointer;line-height:1}
+.jb:active{transform:translateY(1px)}.jb:disabled{opacity:.3;cursor:default}
+.jc{text-align:center;font-size:9px}
+#jtog{all:unset;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:8px;padding:1px 0 3px}
+#jtog:focus-visible{outline:2px solid var(--ink)}
+#jbody{display:flex;flex-direction:column;gap:3px}
+#jobs.min #jbody{display:none}#jobs.min #jtog{padding-bottom:0}
+#jfoot{font-size:7px;color:var(--muted)}#jfoot.bad{color:var(--bad)}
+/* top-right: menu */
+#menuB{position:fixed;top:8px;right:8px;width:38px;height:38px;font-size:14px;padding:0;cursor:pointer}
+#menu{position:fixed;top:54px;right:8px;width:min(280px,calc(100% - 16px));padding:10px 12px;font-size:8px;line-height:1.8;display:flex;flex-direction:column;gap:8px}
+#menu[hidden]{display:none}
+.mrow{display:flex;gap:6px;flex-wrap:wrap}
+.mb{padding:6px 8px;font-size:8px;background:var(--parch);border:2px solid var(--ink);cursor:pointer}
+.mb:active{transform:translateY(1px)}
+#menu b{color:#2f7f8a}
+#helptxt{border-top:2px dashed var(--parch2);padding-top:6px}
+#mini{position:fixed;top:54px;right:8px;width:160px;height:120px;image-rendering:pixelated;padding:0;cursor:crosshair}
+#mini[hidden]{display:none}
+/* bottom: three tools + build tray */
+#bar{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px}
+.tool{min-width:70px;width:auto;white-space:nowrap;height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:2px 8px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2),inset 2px 2px 0 var(--hi)}
+.tool img{height:24px;image-rendering:pixelated}
+.tool.sel{background:var(--sel)}
+#tray{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
+#tray[hidden]{display:none}
+#rtray{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);width:min(260px,calc(100% - 16px));padding:8px 10px;font-size:8px;display:grid;grid-template-columns:20px 1fr auto;gap:5px 8px;align-items:center;font-variant-numeric:tabular-nums}
+#rtray[hidden]{display:none}
+#rtray img{width:18px;height:18px;image-rendering:pixelated}
+#rtray .rn{text-align:right}
+#rtray .rh{grid-column:1/4;color:#2f7f8a;font-size:8px}
+body.rtray #hint,body.rtray #note,body.rtray #btip,body.tray #note{display:none!important}
+#tray::-webkit-scrollbar{display:none}
+.bb{flex:0 0 auto;width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 2px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer}
+.bb img{height:28px;image-rendering:pixelated}
+.bb.sel{background:var(--sel)}
+.bb .cost{display:flex;gap:3px;align-items:center}
+.bb .cost img{height:11px}
+.bb .cost.bad{color:var(--bad)}
+.bb:disabled{opacity:.4;cursor:default}
+.bb[hidden]{display:none}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;font-size:8px;line-height:1.7;padding:6px 10px;width:max-content;max-width:min(440px,calc(100% - 32px));text-align:center;transition:opacity .5s;cursor:pointer}
+#hint.hide{opacity:0;pointer-events:none}
+body.tray #hint{bottom:166px}
+#info{position:fixed;left:8px;bottom:80px;width:min(240px,calc(100% - 16px));padding:8px 10px;font-size:8px;line-height:1.8;display:flex;flex-direction:column;gap:4px}
+#info .nm{font-size:10px;display:flex;align-items:center;gap:6px}
+#info.sheet{width:min(300px,calc(100% - 16px));max-height:calc(100% - 170px);overflow-y:auto;gap:6px}
+.sh-top{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
+.sh-top canvas{width:64px;height:80px;image-rendering:pixelated;background:var(--parch2);border:2px solid var(--ink)}
+.sh-name{font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sh-sub{color:var(--muted);font-size:7px}
+.sh-h{font-size:8px;color:#2f7f8a;border-top:2px dashed var(--parch2);padding-top:5px;margin-top:2px}
+.sh-tr{display:grid;grid-template-columns:16px 1fr;gap:2px 6px;font-size:7px;line-height:1.6}
+.sh-tr b{font-size:8px}
+.sh-stats{display:grid;grid-template-columns:1fr auto;gap:1px 10px;padding-right:2px;font-size:7px;font-variant-numeric:tabular-nums}
+.sh-stats span:nth-child(even){text-align:right}
+.sk{display:grid;grid-template-columns:auto 1fr auto;gap:3px 6px;align-items:center;font-size:7px}
+.fbar.sb{height:6px}.fbar.sb i{background:#5aa8d6}
+.badge{background:#ffd166;border:2px solid var(--ink);padding:0 4px;font-size:7px}
+#shClose{position:sticky;top:0;align-self:flex-end;margin:-4px -4px -18px 0;width:20px;height:20px;padding:0;background:var(--parch);border:2px solid var(--ink);cursor:pointer;font-size:9px;line-height:1}
+#info .mb{align-self:flex-start;margin-top:2px}
+.sw{width:12px;height:12px;border:2px solid var(--ink);display:inline-block;flex:0 0 auto}
+.fbar{height:8px;border:2px solid var(--ink);background:var(--parch2)}.fbar i{display:block;height:100%;background:#7ed957}
+#note{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;width:max-content;max-width:min(420px,calc(100% - 32px));padding:8px 10px;font-size:8px;line-height:1.7;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+#pick{position:fixed;inset:0;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#pickBox{width:min(360px,100%);max-height:calc(100% - 32px);overflow:auto;padding:12px;font-size:8px;line-height:1.7;display:flex;flex-direction:column;gap:6px}
+#pickBox h2{font-size:10px;margin:0 0 4px}
+.prow{display:flex;align-items:center;gap:8px;padding:6px;border:2px solid var(--ink);background:var(--parch);cursor:pointer;font-size:8px;text-align:left;width:100%}
+.prow.on{background:var(--sel)}.prow:disabled{opacity:.4;cursor:default}
+.prow small{margin-left:auto;font-size:7px;color:var(--muted)}
+.warn{color:var(--bad);border-top:2px dashed var(--parch2);padding-top:6px}
+#evoB{margin-top:2px;font-size:7px;padding:5px 6px;display:flex;align-items:center;gap:6px;justify-content:space-between}
+#evoB .pts{background:#ffd166;border:2px solid var(--ink);padding:1px 4px}
+#evoB .pts[hidden]{display:none}
+.trait{border:2px solid var(--ink);background:var(--parch);padding:6px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center}
+.trait b{font-size:9px}.trait .pips{font-size:9px;letter-spacing:2px}
+.trait .now{grid-column:1/3;color:var(--muted);font-size:7px}.trait .next{grid-column:1;font-size:7px}
+.trait .mb[disabled]{opacity:.35}
+#evo{position:fixed;inset:0;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#info[hidden],#note[hidden],#pick[hidden],#evo[hidden]{display:none}
+body.noted #hint{display:none}
+#quest{border-top:2px dashed var(--parch2);padding-top:6px;font-size:7px;line-height:1.6;display:flex;flex-direction:column;gap:3px;max-width:230px}
+#quest[hidden]{display:none}
+#quest .qt{font-size:8px;color:#2f7f8a}
+#quest .mb{align-self:flex-start;font-size:7px;padding:4px 6px;background:#ffd166}
+.job[hidden]{display:none}
+#puz{position:fixed;inset:0;background:rgba(10,25,40,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+#puz[hidden]{display:none}
+#puzBox{width:min(340px,100%);padding:12px;font-size:8px;line-height:1.7;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
+#puzGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:min(288px,100%);background:var(--ink);border:3px solid var(--ink)}
+#puzGrid canvas{width:100%;aspect-ratio:1;image-rendering:pixelated;cursor:pointer;display:block}
+#puzGrid canvas.pick{outline:3px solid #ffd166;outline-offset:-3px}
+#puzGrid.solved{gap:0}
+@media (prefers-reduced-motion:reduce){#hint{transition:none}}
 </style>
-</head>
-
-<body>
-  <h1>FIRST MARKS</h1>
-  <div class="era" id="eraName"></div>
-
-  <div class="game">
-    <!-- LEFT: resources, events, the cave wall, and the story -->
-    <div class="panel">
-      <div class="resources">
-        <div class="resource">
-          <div class="big marks-color" id="marks">0</div>
-          <div class="small">marks · <span id="marksPerSecond">0</span>/sec</div>
-        </div>
-        <div class="resource hidden" id="ideasBox">
-          <div class="big ideas-color" id="ideas">0</div>
-          <div class="small">ideas · <span id="ideasPerSecond">0</span>/sec</div>
-        </div>
-      </div>
-      <div class="effects" id="effects"></div>
-
-      <div class="event hidden" id="eventCard">
-        <div class="event-title" id="eventTitle"></div>
-        <div class="event-text" id="eventText"></div>
-        <div class="event-choices" id="eventChoices"></div>
-        <div class="event-timer" id="eventTimer"></div>
-      </div>
-
-      <div class="wall" id="wall">
-        <div class="wall-hint" id="wallHint">Click the cave wall to carve a mark</div>
-      </div>
-
-      <div class="log" id="log"></div>
-    </div>
-
-    <!-- RIGHT: the people who join you, and the discoveries -->
-    <div>
-      <div class="panel">
-        <h2>People (carve marks for you)</h2>
-        <div id="people"></div>
-      </div>
-      <div class="panel hidden" id="discoveriesPanel">
-        <h2>Discoveries (spend ideas)</h2>
-        <div id="discoveries"></div>
-        <div class="discovered-list" id="discoveredList"></div>
-        <div class="unknown" id="unknownCount"></div>
-      </div>
-    </div>
+<canvas id="c"></canvas>
+<div id="town" class="panel">
+  <div id="res"></div>
+  <div id="quest" hidden></div>
+  <div id="jobs"><button id="jtog" aria-expanded="true" aria-controls="jbody" title="Show or hide jobs"><span>Jobs</span><span id="jarr">▾</span></button><div id="jbody"><div id="jlist"></div><div id="jfoot"></div><button class="mb" id="evoB" title="See the traits your octopuses have discovered"><span id="evoT">Traits · Gen 1</span><span class="pts" id="evoP" hidden>1</span></button></div></div>
+</div>
+<button id="menuB" class="panel" title="Menu" aria-expanded="false" aria-controls="menu">☰</button>
+<div id="menu" class="panel" hidden>
+  <div class="mrow">
+    <button class="mb" id="snd">Sound: on</button>
   </div>
-
-  <div class="footer">
-    Your game saves automatically. &nbsp; <button id="resetButton">Start over</button>
+  <div class="mrow">
+    <button class="mb" id="zout">Zoom -</button>
+    <button class="mb" id="zin">Zoom +</button>
   </div>
+  <div id="helptxt">
+    <b>Jobs</b>: + and - put your octopuses to work<br>
+    <b>Food</b>: foragers find mussels in the soft sand around boulders, cooks bake them at the vent. Hungry octopuses slow down<br>
+    <b>Build</b>: pick a building, tap to place. Octopuses build it. Hold a placed building to remove it<br>
+    <b>Traits</b>: each octopus has its own. Babies inherit them and can discover new ones from what their parents did. Focus a trait when choosing parents<br>
+    <b>Family</b>: every octopus claims a den, but only females lay eggs in theirs. Tap an octopus or den to see who lives where. With a free den and 10 meals, start a family<br>
+    <b>Look around</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
+    <b>Hermit crab</b>: tap it for a happy claw wave
+  </div>
+  <div class="mrow"><button class="mb" id="reset">New map</button><button class="mb" id="testB">Test map</button></div>
+</div>
+<canvas id="mini" class="panel" title="Tap to jump there" hidden></canvas>
+<div id="hint" class="panel" title="Tap to hide"></div>
+<div id="tray" class="panel" hidden></div>
+<div id="rtray" class="panel" hidden aria-label="Resources"></div>
+<div id="bar" class="panel"></div>
+<div id="info" class="panel" hidden></div>
+<div id="note" class="panel" hidden><span>A den is ready and there's food to spare. Start a family?</span><div class="mrow"><button class="mb" id="noteGo">Choose parents</button><button class="mb" id="noteLater">Later</button></div></div>
+<div id="evo" hidden><div id="evoBox" class="panel" role="dialog" aria-label="Evolution" style="width:min(380px,100%);max-height:calc(100% - 32px);overflow:auto;padding:12px;font-size:8px;line-height:1.7;display:flex;flex-direction:column;gap:6px"></div></div>
+<div id="puz" hidden><div id="puzBox" class="panel" role="dialog" aria-label="Beach puzzle"></div></div>
+<div id="pick" hidden><div id="pickBox" class="panel" role="dialog" aria-label="Choose parents"></div></div>
 
 <script>
-/* =====================================================================
-   GAME SETTINGS — the fun part to change!
-   ===================================================================== */
+'use strict';
+// ================= constants =================
+const T=16, W=128, H=96, N=W*H;
+const G_GRASS=0, G_WATER=1, G_SAND=2, G_ROAD=3;
+const O_NONE=0, O_TREE=1, O_STUMP=2, O_SAP=3, O_ROCK=4, O_RUBBLE=5;
+const TREE_HP=6, ROCK_HP=12, HIT=.55, GATHER_HIT=1.4;
+function hitIv(v){return v.job&&v.job.kind!=='build'?GATHER_HIT:HIT}
+const TEST=location.hash==='#test'; // open the page with #test for a sandbox map that never touches the real save
+const KEY=TEST?'summers-reef-test':'summers-reef-v2';
 
-// ---------------------------------------------------------------------
-// PEOPLE who join you and carve on their own.
-//   cost            = marks needed for the first one (it gets pricier each time)
-//   marksPerSecond  = marks ONE of them carves each second
-//   ideasPerSecond  = ideas ONE of them comes up with each second
-//   needs           = which discovery must happen before they appear ("" = none)
-// ---------------------------------------------------------------------
-const PEOPLE = [
-  { id: "child",       name: "Curious Child", emoji: "🧒", cost: 15,      marksPerSecond: 0.2,  ideasPerSecond: 0.05, needs: "",
-    joinText: "A curious child watches you, then picks up a sharp stone too." },
-  { id: "hunter",      name: "Hunter",        emoji: "🏹", cost: 100,     marksPerSecond: 1,    ideasPerSecond: 0,    needs: "",
-    joinText: "A hunter starts scratching a line for every animal caught." },
-  { id: "elder",       name: "Elder",         emoji: "🧓", cost: 400,     marksPerSecond: 2,    ideasPerSecond: 0.25, needs: "",
-    joinText: "An elder sits by the wall and wonders what the marks could mean." },
-  { id: "storyteller", name: "Storyteller",   emoji: "🗣️", cost: 2000,    marksPerSecond: 8,    ideasPerSecond: 1,    needs: "pictograms",
-    joinText: "A storyteller begins painting the tales told around the fire." },
-  { id: "merchant",    name: "Merchant",      emoji: "🧺", cost: 3000,    marksPerSecond: 15,   ideasPerSecond: 0.3,  needs: "tokens",
-    joinText: "A merchant presses little clay tokens to keep track of trades." },
-  { id: "priest",      name: "Priest",        emoji: "🔮", cost: 20000,   marksPerSecond: 20,   ideasPerSecond: 8,    needs: "sacred",
-    joinText: "A priest writes prayers to the sky in sacred signs." },
-  { id: "accountant",  name: "Record Keeper", emoji: "🧮", cost: 20000,   marksPerSecond: 90,   ideasPerSecond: 2,    needs: "ledgers",
-    joinText: "A record keeper fills clay tablet after clay tablet with numbers." },
-  { id: "scribe",      name: "Scribe",        emoji: "✍️", cost: 40000,   marksPerSecond: 60,   ideasPerSecond: 6,    needs: "syllables",
-    joinText: "The first scribe dedicates their whole life to writing." },
-  { id: "teacher",     name: "Teacher",       emoji: "🧑‍🏫", cost: 300000,  marksPerSecond: 300,  ideasPerSecond: 35,   needs: "alphabet",
-    joinText: "A teacher gathers children to learn the letters." },
-  { id: "copyist",     name: "Copyist",       emoji: "📜", cost: 4000000, marksPerSecond: 2000, ideasPerSecond: 220,  needs: "papyrus",
-    joinText: "Copyists begin duplicating scrolls so ideas can travel." },
-];
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=Math.random;
 
-// ---------------------------------------------------------------------
-// DISCOVERIES you buy with ideas. They form a TREE, not a straight line:
-//   needs       = discoveries that must come first. "a|b" means "a OR b".
-//   rival       = a CROSSROADS: choosing this one locks the rival forever
-//                 (for this game). Both sides share the same `question`.
-//   clickBoost  = multiplies marks per click
-//   marksBoost  = multiplies marks from people
-//   ideasBoost  = multiplies ideas from people
-//   peopleBoost = multiplies ONE kind of person, e.g. { scribe: 5 }
-//   glyphs      = symbols that appear on the cave wall after this discovery
-// ---------------------------------------------------------------------
-const DISCOVERIES = [
-  { id: "tally", name: "Tally Marks", emoji: "𝍷", cost: 2, needs: [], clickBoost: 2,
-    desc: "Clicks carve twice as much.",
-    era: "The Age of Counting",
-    story: "Someone realizes five scratches can mean five deer. Counting is born!",
-    glyphs: ["|", "||", "|||", "||||", "𝍸"] },
-
-  // --- Three discoveries open up at once. Pick any order! ---
-  { id: "pictograms", name: "Pictograms", emoji: "🐂", cost: 25, needs: ["tally"], marksBoost: 1.5,
-    desc: "Pictures stand for things. People carve 50% more. Storytellers can join.",
-    era: "The Age of Pictures",
-    story: "A drawing of an ox now means 'ox'. The wall starts telling stories.",
-    glyphs: ["🐂", "🐟", "☀️", "🌾", "🏹", "👁️", "🌙", "🐍", "✋"] },
-  { id: "tokens", name: "Clay Tokens", emoji: "🟤", cost: 40, needs: ["tally"], clickBoost: 2,
-    desc: "Little clay shapes stand for sheep and grain. Clicks ×2. Merchants can join.",
-    era: "The Age of Tokens",
-    story: "A cone of clay means one jar of grain. Trade will never be the same.",
-    glyphs: ["●", "◆", "▲", "◯", "⊙", "■"] },
-  { id: "pigments", name: "Pigments", emoji: "🎨", cost: 90, needs: ["tally"], ideasBoost: 1.5,
-    desc: "Ochre and soot let you paint, not just scratch. Ideas ×1.5. The wall gets color!",
-    era: "The Age of Color",
-    story: "Red ochre, black soot, white chalk. The cave wall bursts into color.",
-    glyphs: ["✋", "🦌", "🐎", "🦬", "🌿", "🔥"] },
-
-  // --- CROSSROADS 1: pick ONE ---
-  { id: "sacred", name: "Sacred Signs", emoji: "☥", cost: 500, needs: ["pictograms", "tokens"], rival: "ledgers",
-    question: "What is writing for?", ideasBoost: 2,
-    desc: "Writing is for the gods. Ideas ×2. Priests can join.",
-    era: "The Age of Holy Signs",
-    story: "Your people decide writing is magic, a way to speak to the gods.",
-    glyphs: ["☥", "👁️", "🪶", "🦅", "🌞", "🐍", "𓂀"] },
-  { id: "ledgers", name: "Ledgers", emoji: "📐", cost: 500, needs: ["pictograms", "tokens"], rival: "sacred",
-    question: "What is writing for?", marksBoost: 2.5,
-    desc: "Writing is for keeping count. Marks ×2.5. Record Keepers can join.",
-    era: "The Age of Wedges",
-    story: "Your people decide writing is for keeping count: grain, sheep, debts.",
-    glyphs: ["▼", "◀", "▼▼", "◀▼", "▼◀◀", "⊲"] },
-
-  { id: "ideograms", name: "Ideograms", emoji: "☯", cost: 350, needs: ["pictograms"], marksBoost: 2, clickBoost: 2,
-    desc: "Symbols stand for ideas, not just things. Everything carves 2× more.",
-    era: "The Age of Symbols",
-    story: "A sun with legs means 'day'. Symbols can now hold ideas.",
-    glyphs: ["☉", "☽", "☯", "⚶", "♒", "✶", "⌘", "⚘"] },
-  { id: "syllables", name: "Syllables", emoji: "🗨️", cost: 2500, needs: ["ideograms", "sacred|ledgers"], ideasBoost: 1.5,
-    desc: "Symbols stand for sounds. Ideas ×1.5. Scribes can join.",
-    era: "The Age of Sounds",
-    story: "Someone writes a name by its sounds. Now anything spoken can be written!",
-    glyphs: ["ka", "mu", "ri", "to", "sa", "ne", "lo", "pi"] },
-  { id: "alphabet", name: "Alphabet", emoji: "🔤", cost: 15000, needs: ["syllables"], marksBoost: 1.5, clickBoost: 3,
-    desc: "A few letters can write every word. Marks ×1.5, clicks ×3. Teachers can join.",
-    era: "The Age of Letters",
-    story: "Just a couple dozen letters can write every word. Anyone can learn!",
-    glyphs: ["A", "B", "Γ", "Δ", "E", "Z", "H", "K", "M", "N", "Ω", "R"] },
-
-  // --- CROSSROADS 2: pick ONE ---
-  { id: "secret", name: "Secret Script", emoji: "🗝️", cost: 60000, needs: ["alphabet"], rival: "everyone",
-    question: "Who may write?", peopleBoost: { scribe: 4, priest: 3, accountant: 3 },
-    desc: "Only trained scribes may write. Scribes ×4, Priests & Record Keepers ×3.",
-    era: "The Age of Secrets",
-    story: "Writing becomes a guarded secret, passed from master to apprentice.",
-    glyphs: ["ᚠ", "ᚢ", "ᚦ", "ᚨ", "ᚱ", "ᚲ"] },
-  { id: "everyone", name: "Writing for All", emoji: "🤝", cost: 60000, needs: ["alphabet"], rival: "secret",
-    question: "Who may write?", peopleBoost: { child: 15, hunter: 10, elder: 6, storyteller: 3, merchant: 3 },
-    desc: "Anyone may learn! Children, Hunters, Elders, Storytellers and Merchants get MUCH stronger.",
-    era: "The Age of Readers",
-    story: "Writing is taught to everyone. Even children leave notes on the walls.",
-    glyphs: ["hi!", "mom", "fish", "I WAS HERE", "☺", "ABC"] },
-
-  { id: "papyrus", name: "Ink & Papyrus", emoji: "🪶", cost: 400000, needs: ["alphabet"], ideasBoost: 2,
-    desc: "Writing leaves the cave. Ideas ×2. Copyists can join.",
-    era: "The Age of Scrolls",
-    story: "Reeds become paper, soot becomes ink. Writing can be carried anywhere.",
-    glyphs: ["SUN", "RIVER", "BREAD", "HOME", "STAR", "KING", "SEED", "WE"] },
-  { id: "library", name: "The Great Library", emoji: "🏛️", cost: 8000000, needs: ["papyrus", "secret|everyone"],
-    marksBoost: 3, ideasBoost: 3, clickBoost: 3,
-    desc: "All knowledge in one place. Everything 3× stronger.",
-    era: "The Age of Memory",
-    story: "A great library rises. Your people will never forget again. 🏛️ You have completed the story, for now! Try 'Start over' and pick the other crossroads.",
-    glyphs: ["WE REMEMBER", "KNOW", "WORDS", "TELL", "LEARN", "WRITE"] },
-];
-
-// ---------------------------------------------------------------------
-// RANDOM EVENTS — every so often one pops up and you choose what to do.
-// Inside `do`, you can use these helpers:
-//   gainMarks(seconds)          — get as many marks as you'd make in that many seconds
-//   gainIdeas(seconds)          — same, for ideas
-//   loseMarks(fraction)         — lose part of your marks (0.25 = a quarter)
-//   boost(kind, times, seconds) — a temporary boost. kind is "clickBoost",
-//                                 "marksBoost" or "ideasBoost". times 0 = stops it!
-//   addPeople(id, count)        — free people join
-// `needs` (optional) = a discovery required before this event can happen.
-// ---------------------------------------------------------------------
-const EVENTS = [
-  { title: "🧳 A Stranger Arrives",
-    text: "A traveler shows you a bone covered in symbols you've never seen.",
-    choices: [
-      { label: "Trade for the bone (lose 30% of marks)", result: "The strange symbols spark lots of ideas!",
-        do: () => { loseMarks(0.3); gainIdeas(150); } },
-      { label: "Send them away", result: "The stranger shrugs and walks on.",
-        do: () => {} },
-    ] },
-  { title: "🦣 The Great Herd",
-    text: "A huge herd of mammoths is passing through the valley.",
-    choices: [
-      { label: "Everyone hunts!", result: "A huge feast and many hunt tallies, but no time for thinking.",
-        do: () => { gainMarks(180); boost("ideasBoost", 0, 30); } },
-      { label: "Stay in the cave and think", result: "The quiet cave helps everyone think.",
-        do: () => { boost("ideasBoost", 2, 45); } },
-    ] },
-  { title: "🌊 Flood!",
-    text: "Water is pouring into the cave.",
-    choices: [
-      { label: "Move to a new cave (lose 25% of marks)", result: "Fresh, empty walls! Everyone carves eagerly.",
-        do: () => { loseMarks(0.25); boost("marksBoost", 3, 60); } },
-      { label: "Dig a channel", result: "Digging is slow, but someone has a clever idea about water.",
-        do: () => { boost("marksBoost", 0.5, 40); gainIdeas(80); } },
-    ] },
-  { title: "🌑 The Sun Disappears!",
-    text: "At midday, the sky turns dark as night.",
-    choices: [
-      { label: "Record it on the wall", result: "You draw the dark sun. People will remember this day.",
-        do: () => { gainIdeas(90); } },
-      { label: "Carve prayers, fast!", result: "Your hands carve with holy fury! (Clicks ×5)",
-        do: () => { boost("clickBoost", 5, 30); } },
-    ] },
-  { title: "🔥 Festival Night",
-    text: "Your people want a great feast to celebrate.",
-    choices: [
-      { label: "Hold the feast (spend 50% of marks)", result: "Stories flow all night. Ideas everywhere!",
-        do: () => { loseMarks(0.5); boost("ideasBoost", 3, 60); } },
-      { label: "Keep working", result: "Grumbling, everyone keeps carving.",
-        do: () => { gainMarks(60); } },
-    ] },
-  { title: "🏕️ Neighbors",
-    text: "Another tribe nearby has been making marks of their own.",
-    choices: [
-      { label: "Share symbols", result: "You learn from each other.",
-        do: () => { gainIdeas(60); gainMarks(60); } },
-      { label: "Out-carve them!", result: "A carving contest begins! (Marks ×2, Clicks ×2)",
-        do: () => { boost("marksBoost", 2, 60); boost("clickBoost", 2, 60); } },
-    ] },
-  { title: "🧒 A Child's Question",
-    text: "A child points at the wall and asks: \"What does that say?\"",
-    choices: [
-      { label: "Explain it patiently", result: "Teaching it makes you understand it better.",
-        do: () => { gainIdeas(60); } },
-      { label: "Hand them a stone", result: "Two more children join the wall!",
-        do: () => { addPeople("child", 2); } },
-    ] },
-  { title: "📚 A Spelling Argument", needs: "syllables",
-    text: "Two scribes are shouting about the right way to write a word.",
-    choices: [
-      { label: "Let them argue", result: "The argument produces new ideas, but less carving gets done.",
-        do: () => { boost("ideasBoost", 2.5, 60); boost("marksBoost", 0.5, 60); } },
-      { label: "Pick one spelling", result: "Decided! Everyone gets back to work.",
-        do: () => { gainMarks(120); } },
-    ] },
-  { title: "🕯️ The Lamp Oil Runs Low", needs: "pictograms",
-    text: "The cave is getting dark. There's only a little oil left.",
-    choices: [
-      { label: "Work by firelight", result: "Smoky, but you keep going. Clicks ×3!",
-        do: () => { boost("clickBoost", 3, 45); } },
-      { label: "Rest until morning", result: "Everyone sleeps well and wakes up full of ideas.",
-        do: () => { boost("marksBoost", 0, 20); gainIdeas(120); } },
-    ] },
-];
-
-// How often events pop up (in seconds, chosen randomly between these)
-const EVENT_EVERY_MIN = 60;
-const EVENT_EVERY_MAX = 140;
-const EVENT_LASTS = 30;          // seconds before an ignored event goes away
-
-// The glowing crack: a bonus you click on the wall
-const CRACK_EVERY_MIN = 35;
-const CRACK_EVERY_MAX = 90;
-const CRACK_LASTS = 8;
-
-// Every time you hire a person, their price is multiplied by this.
-// 1.15 means "15% more expensive each time". Bigger = harder game.
-const PRICE_GROWTH = 1.15;
-
-// Marks per click before any discoveries.
-const BASE_CLICK = 1;
-
-// The symbols carved before any discovery: simple scratches.
-const FIRST_GLYPHS = ["|", "/", "\\", "—", "×", "⌒"];
-
-// Ideas start showing up once you have carved this many marks in total.
-const IDEAS_APPEAR_AT = 10;
-
-// Speed of the whole game. Set to 10 to test things quickly. Normal = 1.
-const GAME_SPEED = 1;
-
-
-/* =====================================================================
-   GAME STATE — everything the game needs to remember
-   ===================================================================== */
-
-function newGame() {
-  return {
-    marks: 0,
-    ideas: 0,
-    totalMarks: 0,       // all marks ever carved (never goes down)
-    time: 0,             // seconds of game time played
-    people: {},          // e.g. { child: 3, hunter: 1 }
-    discovered: [],      // discovery ids, in the order you made them
-    effects: [],         // temporary boosts: { kind, times, until, label }
-    log: [],             // story messages
-    nextEventAt: randomBetween(EVENT_EVERY_MIN, EVENT_EVERY_MAX),
-    nextCrackAt: randomBetween(CRACK_EVERY_MIN, CRACK_EVERY_MAX),
-    lastSaved: Date.now(),
-  };
+// ================= sprites =================
+const INK='#1d2b3a';
+const PAL={k:INK,g:'#3f6b2a',G:'#6a9a3a',l:'#a5c95a',t:'#7a4b2a',T:'#5a361e',u:'#d4a26a',U:'#a8713f',
+  s:'#8b8f9a',S:'#5e6270',w:'#e8dcc0',y:'#f4d35e',r:'#e0533d',R:'#a83426',W:'#ffffff',f:'#f5c9a0',h:'#3b2a20',
+  e:INK,m:'#8a3020',d:'#f28c4a',D:'#c8602a',L:'#ffc08a',b:'#5a3a22',a:'#a7adb5',A:'#dde1e5',n:'#6b7280',
+  p:'#f2a7b5',P:'#c9707f',q:'#86b8d8',Q:'#4f7f9f',o:'#e08b4f',O:'#a65a2a',x:'#45454f',X:'#1c1c22',z:'#d8d8e8',
+  j:'#f2c25a',J:'#c8873a',v:'#8fd6b8',V:'#4f9e86'};
+function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function sprite(rows,h,pal=PAL,w=16){
+  h=h||rows.length;const c=mk(w,h),x=c.getContext('2d'),off=h-rows.length;
+  rows.forEach((row,j)=>{for(let i=0;i<Math.min(w,row.length);i++){const col=pal[row[i]];if(!col)continue;x.fillStyle=col;x.fillRect(i,j+off,1,1)}});
+  return c;
 }
+function setPx(rows,list){const r=rows.map(s=>s.split(''));for(const[x,y,ch,only]of list){if(r[y]&&r[y][x]!==undefined&&(!only||only.includes(r[y][x])))r[y][x]=ch}return r.map(a=>a.join(''))}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);const c=[n>>16,n>>8&255,n&255].map(v=>Math.max(0,Math.min(255,Math.round(v*f))));return'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('')}
+const E16="................";
 
-function randomBetween(a, b) { return a + Math.random() * (b - a); }
-function pickRandom(list)    { return list[Math.floor(Math.random() * list.length)]; }
+// ---------- algae (was trees) ----------
+const KELP=[
+".......kk.......",
+"......kGGk......",
+"......kGlk..kk..",
+".kk...kGGk.kGGk.",
+"kGGk..kgGk.kGlk.",
+"kGlGk.kGGkkGGk..",
+".kGGkkgGGkkGk...",
+"..kGGkGGgkGGk...",
+"...kGkGGkkGk....",
+"...kGGkGGkk.....",
+"....kGGGgk......",
+"....kgGGk.......",
+".....kGGk.......",
+".....kgGk.......",
+"....kgGGk.......",
+"....kggGgk......",
+"...kgkkkgk......",
+"...kk...kk......"];
+const SEAGRASS=[
+"..k.........k...",
+".kGk...k...kGk..",
+".kGk..kGk..kGk..",
+".kGk..kGk..kGk..",
+"..kGk.kGk.kGk...",
+"..kGk.kGk.kGk...",
+"..kGlkkGkkGlk...",
+"...kGkkGkkGk....",
+"...kGGkGkGGk....",
+"....kGkGkGk.....",
+"....kgGGGgk.....",
+"....kgGGGgk.....",
+".....kgGgk......",
+".....kgggk......",
+"....kkkkkkk....."];
+const TREES=[sprite(KELP,20),sprite(SEAGRASS,20,{...PAL,g:'#2f6e5e',G:'#4fa38a',l:'#8fd6b8'}),
+  sprite(KELP,20,{...PAL,g:'#7a2f3f',G:'#b84a5a',l:'#e88a98'}),sprite(SEAGRASS,20,{...PAL,g:'#5a6b22',G:'#8fa83a',l:'#c8dc6a'})];
 
-let state = newGame();
+// ---------- shell mounds (were rocks) ----------
+const ROCK_ROWS=[
+"......kkkk......",
+"....kkWppWkk....",
+"...kWpPkkwppk...",
+"..kpPkWWkkpPpk..",
+"..kPkWppPkkWpk..",
+".kwwkpPPkWWkPpk.",
+".kWwwkkkwwWwkPk.",
+".kpWwwkPppWwkkk.",
+"..kPppkPPpkWwk..",
+"...kkkkkkkkkk..."];
+const ROCK=sprite(ROCK_ROWS,16);
+const ROCK_S=sprite(["......kkkk......","....kkWppWk.....","...kpPkkwppk....","..kwWkpPPkWwk...","...kkkkkkkkk...."],16);
+const STUMP=sprite(["......kk........",".....kGk.kk.....","....kgGkkGk.....","....kggggk......","...kkkkkkkk....."],16);
+const SAPLING=STUMP;
+const RUBBLE=sprite(["...kk......kk...","..kWpk.kk.kwWk..","...kk.kpWk.kk...","......kkkk......"],16);
 
+// ---------- sponges & corals (decoration only, for now) ----------
+const DPAL={...PAL,j:'#f2c25a',J:'#c8873a',b:'#5a3a22',p:'#e87896',P:'#b44664',q:'#aa78dc',Q:'#6e4ba0',g:'#96c86e',G:'#5f9146'};
+const DECO=[
+  sprite(["..kkkk..........",".kJbbJk..kkkk...",".kjJJjk.kJbbJk..",".kjjjJk.kjJJjk..",".kjjjJk.kjjjJk..",".kjjjJkkkjjjJk..",".kjjjJkjkjjjJk..",".kjjjJkjkjjjJk..","..kjjJkjkjjJk...","...kkkkkkkkk...."],16,DPAL),
+  sprite(["....kkkkkkk.....","...kQbbbbbQk....","..kqQQQQQQQqk...","..kqqqqqqqqQk...",".kqqQqqQqqQqQk..",".kqqQqqQqqQqQk..",".kqqQqqQqqQqQk..",".kqqQqqQqqQQQk..","..kqqqqqqqQQk...","...kkkkkkkkk...."],16,DPAL),
+  sprite(["...k.....k......","..kpk...kpk..k..","..kpk.k.kpk.kpk.","..kpkkpkkpk.kpk.","...kpkpkpk.kpk..","...kpkpkPkkpk...","....kpPpPkpk....",".....kpPPpk.....","......kPPk......",".....kkkkkk....."],16,DPAL),
+  sprite(["....kkkkkk......","..kkqkqqkqkk....",".kqkqqkqkqqkk...",".kqqkqkqkqkqk...","kqkqqkqqkqqkqk..",".kqqkqkqkqkqk...","..kqqkqkqkqk....","...kkqkqkkk.....",".....kQk........","....kkkkk......."],16,DPAL),
+  sprite(["....kkkkkk......","..kkgGggGgkk....",".kgGgkgGgkgGk...",".kggGgGkgGgGk...","kgGgkgGgkgGgGk..","kgggGgkgGgGGGk..",".kGGGGGGGGGGk...","..kkkkkkkkkk...."],16,DPAL)];
+function decoHash(i){let h=(i*2654435761^(S.seed|0)*40503)>>>0;h^=h>>>15;h=Math.imul(h,2246822519)>>>0;h^=h>>>13;return h>>>0}
+function decoAt(i){if(S.ground[i]!==G_GRASS||S.obj[i]!==O_NONE||S.bmap[i])return-1;const h=decoHash(i);return h%1000<70?(h>>>10)%DECO.length:-1}
+// ---------- octopuses ----------
+const OCTO_TOP=[
+".....kkkkkk.....",
+"....kddddddk....",
+"...kdLLddddDk...",
+"..kdLddddddDDk..",
+"..kdddddddddDk..",
+"..kddddddddDDk..",
+"..kdWWddWWdDDk..",
+"..kdWkddWkdDDk..",
+"...kddmmddDDk...",
+"..kddddddddDDk.."];
+const OCTO_A=OCTO_TOP.concat(["..kdDkdDkdDkdDk.",".kdk.kdk.kdk.kdk",".kk..kk..kk..kk."]);
+const OCTO_B=OCTO_TOP.concat(["..kdDkdDkdDkdDk.","..kdk.kdk.kdk.kd","...kk..kk..kk.kk"]);
+function charSprites(pal){return[sprite(OCTO_A,20,pal),sprite(OCTO_B,20,pal)]}
+function octoPal(c){return{...PAL,d:c,D:shade(c,.75),L:shade(c,1.3),m:shade(c,.5)}}
+const MULTI_CHANCE=.02, MULTI_BOTH=.15; // any baby: 2%; both parents multicoloured: +15%
+const SPOTS=[[5,2,'1'],[6,2,'1'],[10,3,'2'],[10,4,'2'],[4,4,'2'],[4,5,'2'],[8,4,'1'],[11,5,'1'],[7,9,'2'],[8,9,'2'],[4,9,'1'],[11,9,'1'],[3,10,'2'],[6,10,'1'],[9,10,'2'],[12,10,'1'],[2,11,'1'],[6,11,'2'],[10,11,'1'],[14,11,'2']];
+function multiSprites(c,c2,c3){const pal={...octoPal(c),'1':c2,'2':c3},only=['d','D','L'];
+  return[sprite(setPx(OCTO_A,SPOTS.map(p=>[...p,only])),20,pal),sprite(setPx(OCTO_B,SPOTS.map(p=>[...p,only])),20,pal)]}
+function vivid(){const h=rnd()*360,s=.75,l=.62,k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));
+  return'#'+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('')}
+const SUMMER_COL='#f28c4a';
+const SUMMER=charSprites(octoPal(SUMMER_COL));
 
-/* =====================================================================
-   RULES — little functions that calculate things
-   ===================================================================== */
+// ---------- the little hermit crab (faces left in the source art) ----------
+const CPAL={...PAL,p:'#f3d6a8',P:'#c99a5e',W:'#fff4dc',r:'#e0533d',R:'#a83426'};
+const CRAB_A=[
+".......kkkkk....",
+".....kkpppppkk..",
+"....kppWWpppPPk.",
+"k.k.kpWkkkpppPk.",
+"r.r.kpWkppkppPk.",
+"krrkkppkkkpppPk.",
+"krrrkkppppppPPk.",
+".kRrrrkkPPPPPk..",
+"kRRk.krrkkkkk...",
+".kk.krkrk.......",
+"....k.k.k......."];
+const CRAB_B=CRAB_A.slice(0,5).concat(["kRRkkppkkkpppPk.","kRrrkkppppppPPk.",".krrrrkkPPPPPk..","....krrkkkkk....",".....krkrk......","....k.k.k......."]);
+const CRAB_WALK=CRAB_A.slice(0,9).concat([".kk..krkrk......","...k.k.k........"]);
+const CRAB_SLEEP=[".......kkkkk....",".....kkpppppkk..","....kppWWpppPPk.","....kpWkkkpppPk.","....kpWkppkppPk.","....kppkkkpppPk.","....kkppppppPPk.",".....kkkkkkkkk.."];
+const WOLF={a:sprite(CRAB_A,12,CPAL),b:sprite(CRAB_B,12,CPAL),walk:sprite(CRAB_WALK,12,CPAL),sleep:sprite(CRAB_SLEEP,12,CPAL)};
 
-function howMany(id)       { return state.people[id] || 0; }
-function hasDiscovered(id) { return id === "" || state.discovered.includes(id); }
-function findDiscovery(id) { return DISCOVERIES.find(d => d.id === id); }
+// ---------- small items ----------
+const LOG_HELD=sprite([".k.k.","kGkGk","kGkGk","kuuuk","kGkGk","kGkGk","kgkgk",".k.k."],8,PAL,5);
+const MINI={
+  wood:sprite([".k.k.k..","kGkGkGk.","kuuuuuk.","kGkGkGk.",".kkkkk.."],5,PAL,8),
+  stone:sprite(["..kkk...",".kWppk..","kpkkPk..","kpPPPk..",".kkkk..."],5,PAL,8),
+  heart:sprite([".kk.kk.","krrkrrk","krrrrrk",".krrrk.","..krk..","...k..."],6,PAL,7)
+};
+const ICON={
+  wood:sprite([E16,E16,"......k.k.k.....",".....kGkGkGk....",".....kGkGkGk....","....kGlkGkGlk...","....kGGkGkGGk...","....kkkkkkkkk...","....kuuuuuuuk...","....kkkkkkkkk...",".....kGkGkGk....",".....kgkgkgk....","......kkkkk.....",E16,E16,E16],16),
+  stone:sprite([E16,E16,E16,"......kkkk......","....kkWpppk.....","...kWpkkkppk....","...kpkWWkPpk....","..kppkWkkPPk....","..kpPpkkPPk.....","..kkPPPPPkk.....","...kkkkkk.......",E16,E16,E16,E16,E16],16),
+  hand:sprite([E16,".....kkkk.......","....kddddk......","...kdLdddDk.....","...kddddDDk.....","...kdWdWdDk.....","...kddddDDk.....","..kdDkdDkdDk....","..kdk.kdk.kdk...","..kk..kk...kk...",E16,E16,E16,E16,E16,E16],16,octoPal('#a77bd6')),
+  axe:sprite([E16,".........kkk....","........kwwsk...",".......kwwssSk..","......kkwsssSk..",".....ktkksSSk...","....ktk..kkk....","...ktk..........",
+  "..ktk...........",".ktk............",".kk.............",E16,E16,E16,E16,E16],16),
+  pick:sprite([E16,"...kkkkkkkkk....","..kwwwwwwsssk...",".kwkkkktkkkSSk..",".kk...ktk...kk..","......ktk.......","......ktk.......","......ktk.......","......ktk.......","......ktk.......","......kkk......."],16),
+  x:sprite([E16,"..kk........kk..",".krrk......krrk.",".krrrk....krrrk.","..krrrk..krrrk..","...krrrkkrrrk...","....krrrrrrk....",".....krrrrk.....",
+  ".....krrrrk.....","....krrrrrrk....","...krrrkkrrrk...","..krrrk..krrrk..",".krrrk....krrrk.",".krrk......krrk.","..kk........kk..",E16],16)
+};
+ICON.folk=ICON.hand;
 
-// Are all of a discovery's "needs" met? ("a|b" means either one is fine)
-function needsMet(d) {
-  return d.needs.every(need => need.split("|").some(hasDiscovered));
-}
+// ---------- seafloor tiles ----------
+const RT=mulberry(777);
+function tile(fn){const c=mk(16,16);fn(c.getContext('2d'));return c}
+function P1(x,a,b,c){x.fillStyle=c;x.fillRect(a,b,1,1)}
+const GRASS=[0,1,2,3,4,5].map(n=>tile(x=>{
+  x.fillStyle='#d2c79a';x.fillRect(0,0,16,16);
+  for(let i=0;i<2;i++){const yy=2+RT()*13|0,xx=RT()*10|0;x.fillStyle='#c4b98c';x.fillRect(xx,yy,4+RT()*3|0,1)}
+  for(let i=0;i<8;i++)P1(x,RT()*16|0,RT()*16|0,RT()<.5?'#bfb487':'#e2d9b0');
+  if(n===4){const cx=5+RT()*6|0,cy=5+RT()*6|0,c='#e8834f';P1(x,cx,cy,c);P1(x,cx-1,cy,c);P1(x,cx+1,cy,c);P1(x,cx,cy-1,c);P1(x,cx-1,cy+1,c);P1(x,cx+1,cy+1,c);P1(x,cx,cy,'#f6b08a')}
+  if(n===5){const cx=4+RT()*8|0,cy=6+RT()*6|0;P1(x,cx,cy,'#4fa38a');P1(x,cx,cy-1,'#4fa38a');P1(x,cx+1,cy-2,'#8fd6b8');P1(x,cx+2,cy,'#4fa38a');P1(x,cx+2,cy-1,'#8fd6b8');P1(x,cx+9>15?cx-3:cx+6,cy+2,'#f2a7b5')}
+}));
+const SAND=tile(x=>{x.fillStyle='#c2b588';x.fillRect(0,0,16,16);for(let i=0;i<10;i++)P1(x,RT()*16|0,RT()*16|0,RT()<.5?'#ad9f72':'#d3c79c');
+  for(const[a,b]of[[3,4],[11,11]]){x.fillStyle='#1f2638';x.fillRect(a,b,2,1);x.fillStyle='#3b4a6b';x.fillRect(a,b+1,2,1)}});
+const BOULDER_ROWS=["....kkkkkkk.....","..kkAAAaaaakk...",".kAAaaaaaaaank..",".kAaaaaaaaaannk.","kAaaaaaaaaaannk.","kaaaaaaaaaaannnk","kaaaaaaaaaannnnk",
+  "kaaaaaaaaannnnnk","kaaaaaaaannnnnnk","knaaaaaannnnnnnk","knnaaannnnnnnnk.",".knnnnnnnnnnnnk.","..kknnnnnnnnkk..","....kkkkkkkk....",E16,E16];
+const BPAL={...PAL,a:'#8d97a3',A:'#b4bdc7',n:'#66707c',x:'#3b4a6b',X:'#1f2638',z:'#8fa3c8'};
+const MUSSELS=[[9,8,'X'],[10,8,'x'],[10,9,'X'],[11,9,'x'],[12,8,'X'],[11,10,'X'],[3,9,'x'],[4,9,'X'],[4,10,'x'],[5,10,'X'],[7,11,'X'],[8,11,'x']];
+const WATER=[sprite(BOULDER_ROWS,16,BPAL),sprite(setPx(BOULDER_ROWS,MUSSELS),16,BPAL),
+  sprite(setPx(BOULDER_ROWS,MUSSELS.slice(0,6).concat([[4,1,'G'],[5,1,'l'],[5,0,'G'],[8,1,'G'],[8,0,'G'],[9,0,'l']])),16,BPAL)];
+const ROAD=tile(x=>{x.fillStyle='#cfc49a';x.fillRect(0,0,16,16);
+  for(let i=0;i<7;i++){const a=1+RT()*12|0,b=1+RT()*12|0,c=['#9fa3a6','#b8bcbf','#7f8589'][i%3];x.fillStyle=c;x.fillRect(a,b,3,2);x.fillStyle='#d8dbdd';x.fillRect(a,b,1,1)}});
 
-// Was this discovery locked out by choosing its rival at a crossroads?
-function isLockedOut(d) {
-  return d.rival && hasDiscovered(d.rival);
-}
+// ---------- reef buildings ----------
+function bcanvas(w,h,fn){const c=mk(w,h),x=c.getContext('2d');const R=(a,b,cw,ch,col)=>{x.fillStyle=col;x.fillRect(a,b,cw,ch)};fn(R,x);return c}
+function dome(R,cx,y0,rows,maxHalf,col,dark,grow=3.2){for(let r=0;r<rows;r++){const y=y0+r,half=Math.min(maxHalf,Math.round(2+Math.sqrt(r)*grow)),x0=cx-half,x1=cx+half;
+  R(x0,y,x1-x0,1,INK);if(x1-x0>2){R(x0+1,y,x1-x0-2,1,col);if(half>4)R(x1-4,y,3,1,dark)}}R(cx-maxHalf,y0+rows,maxHalf*2,1,INK)}
+const BSPR={
+  house:bcanvas(32,40,(R)=>{ // Den: a dome built from shells, with a conch on top
+    for(let r=0;r<8;r++){const y=3+r,half=Math.round(r*.45);R(16-half-1,y,half*2+3,1,INK);R(16-half,y,half*2+1,1,r%3===2?'#c99a5e':'#f3d6a8')}
+    R(14,6,2,1,'#c99a5e');R(17,8,2,1,'#c99a5e');
+    dome(R,16,11,27,15,'#efd9c6','#d8bba6');
+    const SH=[['#f2a7b5','#c9707f'],['#fff4dc','#d8c3a0'],['#f6c49a','#c98b5e'],['#d8c4ec','#a58cc2']];let k=0;
+    for(let y=13;y<36;y+=4){const r=y-11,half=Math.min(15,Math.round(2+Math.sqrt(r)*3.2)),off=(y/4|0)%2?0:2;
+      for(let x=16-half+1+off;x+5<=16+half-1;x+=5){const[c,d]=SH[(k++)%4];
+        R(x+1,y,3,1,INK);R(x,y+1,1,2,INK);R(x+4,y+1,1,2,INK);R(x+1,y+3,3,1,INK);R(x+1,y+1,3,2,c);R(x+2,y+1,1,2,d);R(x+2,y+3,1,1,d)}}
+    R(11,27,10,11,INK);R(12,28,8,10,'#0f1c28');R(12,26,8,1,INK);R(13,25,6,1,INK);
+    R(13,31,1,1,'#9ff3ff');R(18,34,1,1,'#9ff3ff');R(16,29,1,1,'#9ff3ff')}),
+  store:bcanvas(32,40,(R)=>{ // Clam cache: a giant open clam full of goods
+    for(let r=0;r<12;r++){const y=9+r,half=5+r,x0=16-half,x1=16+half;R(x0,y,x1-x0,1,INK);if(x1-x0>2)R(x0+1,y,x1-x0-2,1,r%3===2?'#a86a92':'#c98ab0')}
+    for(let x=6;x<27;x+=4)R(x,14,1,7,'#a86a92');
+    R(4,21,24,4,INK);R(5,22,22,2,'#fff4dc');R(8,21,2,2,'#ffffff');R(14,21,2,2,'#d8d8e8');R(20,21,2,2,'#ffffff');R(11,22,3,1,'#6a9a3a');R(23,22,2,1,'#f2a7b5');
+    for(let r=0;r<13;r++){const y=25+r,half=15-Math.floor(r*r/14),x0=16-half,x1=16+half;R(x0,y,x1-x0,1,INK);if(x1-x0>2)R(x0+1,y,x1-x0-2,1,r%3===1?'#a86a92':'#c98ab0')}
+    for(let x=6;x<27;x+=4)R(x,26,1,8,'#a86a92');R(3,38,26,1,INK)}),
+  fire:bcanvas(32,32,(R)=>{ // Vent: a rocky chimney on the seafloor
+    for(let r=0;r<20;r++){const y=9+r,half=3+Math.round(r*.55),x0=16-half,x1=16+half;R(x0,y,x1-x0,1,INK);if(x1-x0>2){R(x0+1,y,x1-x0-2,1,'#4a4e57');R(x1-4,y,3,1,'#33363d')}}
+    R(12,8,8,2,INK);R(13,8,6,1,'#1a1214');R(4,28,24,2,INK);R(5,28,22,1,'#4a4e57');
+    for(const[a,b]of[[11,16],[19,20],[13,24],[17,13]])R(a,b,2,1,'#62666f');
+    R(2,26,4,3,INK);R(3,26,2,2,'#6b6f78');R(26,25,4,4,INK);R(27,26,2,2,'#6b6f78')}),
+  bench:bcanvas(16,20,(R)=>{ // Tool rock
+    R(1,11,14,7,INK);R(2,11,12,6,'#8a96a0');R(2,11,12,2,'#a9b4bd');R(2,16,12,1,'#6c7882');
+    R(3,8,5,3,INK);R(4,8,3,2,'#e8dcc0');R(4,8,1,1,'#ffffff');
+    R(10,6,1,5,'#a8713f');R(9,5,3,2,INK);R(10,5,1,1,'#9aa6b1');R(12,9,2,2,'#f2a7b5')}),
+  rake:bcanvas(16,20,(R)=>{ // Mussel rake: a shell-toothed rake leaning on a little mussel pile
+    R(2,15,12,4,INK);R(3,15,10,3,'#c2b588');R(4,15,2,2,'#1f2638');R(7,16,2,1,'#3b4a6b');R(10,15,2,2,'#1f2638');R(5,17,1,1,'#3b4a6b');
+    R(9,2,2,13,INK);R(10,2,1,12,'#a8713f');R(4,1,9,3,INK);R(5,2,7,1,'#e8dcc0');for(const x of[5,7,9,11])R(x,3,1,2,'#fff4dc');R(12,7,2,2,'#f2a7b5')}),
+  grill:bcanvas(16,20,(R)=>{ // Hot stone: a flat stone over a glowing crack, mussels sizzling on top
+    R(1,13,14,6,INK);R(2,13,12,5,'#5e6270');R(2,13,12,1,'#8b8f9a');R(4,16,8,1,'#ff7a3a');R(6,17,4,1,'#ffd56b');
+    R(2,10,12,3,INK);R(3,10,10,2,'#9aa6b1');R(4,8,3,2,INK);R(5,8,1,1,'#3b4a6b');R(9,8,3,2,INK);R(10,8,1,1,'#3b4a6b');
+    R(6,4,1,3,'#dff6ff');R(9,3,1,3,'#dff6ff');R(7,2,1,2,'#dff6ff')}),
+  dog:bcanvas(16,20,(R)=>{ // Crab shell: a roomy spare shell
+    for(let r=0;r<12;r++){const y=6+r,half=Math.min(7,1+Math.round(r*.9)),x0=8-half,x1=8+half;R(x0,y,x1-x0,1,INK);if(x1-x0>2)R(x0+1,y,x1-x0-2,1,r%3===0?'#c99a5e':'#f3d6a8')}
+    R(7,4,2,2,INK);R(8,6,4,1,'#c99a5e');R(6,9,5,1,'#c99a5e');R(4,12,8,1,'#c99a5e');
+    R(2,13,5,5,INK);R(3,14,3,4,'#3a2a24');R(1,18,14,1,INK)})
+};
 
-function isAvailable(d) {
-  return !hasDiscovered(d.id) && needsMet(d) && !isLockedOut(d);
-}
-
-// Price of the next person of this kind
-function priceOf(person) {
-  return Math.ceil(person.cost * Math.pow(PRICE_GROWTH, howMany(person.id)));
-}
-
-// Multiply together a boost from every discovery + every active effect
-function totalBoost(kind) {
-  let result = 1;
-  for (const id of state.discovered) {
-    const d = findDiscovery(id);
-    if (d && d[kind]) result *= d[kind];
-  }
-  for (const e of state.effects) {
-    if (e.kind === kind) result *= e.times;
-  }
-  return result;
-}
-
-// Extra strength for one kind of person (from things like Secret Script)
-function personBoost(person) {
-  let result = 1;
-  for (const id of state.discovered) {
-    const d = findDiscovery(id);
-    if (d && d.peopleBoost && d.peopleBoost[person.id]) result *= d.peopleBoost[person.id];
-  }
-  return result;
-}
-
-function marksPerSecond() {
-  let total = 0;
-  for (const p of PEOPLE) total += p.marksPerSecond * howMany(p.id) * personBoost(p);
-  return total * totalBoost("marksBoost");
-}
-
-function ideasPerSecond() {
-  let total = 0;
-  for (const p of PEOPLE) total += p.ideasPerSecond * howMany(p.id) * personBoost(p);
-  return total * totalBoost("ideasBoost");
-}
-
-function marksPerClick() {
-  return BASE_CLICK * totalBoost("clickBoost");
-}
-
-// The most recent discovery (decides the era name + wall symbols)
-function latestDiscovery() {
-  return findDiscovery(state.discovered[state.discovered.length - 1]);
-}
-
-function addMarks(amount) {
-  state.marks += amount;
-  state.totalMarks += amount;
-}
-
-// Turn big numbers into short readable text: 1234567 -> "1.23M"
-function pretty(n) {
-  if (n > 0 && n < 1) return parseFloat(n.toFixed(2)).toString();   // e.g. 0.05
-  if (n < 10)   return (Math.floor(n * 10) / 10).toString();
-  if (n < 1000) return Math.floor(n).toString();
-  const units = ["", "K", "M", "B", "T", "Qa", "Qi"];
-  let i = 0;
-  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
-  return n.toFixed(2) + units[i];
-}
-
-
-/* =====================================================================
-   HELPERS FOR EVENTS — used in the EVENTS list above
-   ===================================================================== */
-
-// Base rates WITHOUT temporary effects, so events don't snowball
-function baseRate(kind) {
-  const saved = state.effects;
-  state.effects = [];
-  const rate = kind === "marks" ? marksPerSecond() : ideasPerSecond();
-  state.effects = saved;
-  return rate;
-}
-
-function gainMarks(seconds) {
-  // Early on you make almost nothing per second, so clicks count too
-  const amount = Math.max(baseRate("marks") * seconds, marksPerClick() * seconds / 4);
-  addMarks(amount);
-  return amount;
-}
-
-function gainIdeas(seconds) {
-  const amount = Math.max(baseRate("ideas") * seconds, seconds / 20);
-  state.ideas += amount;
-  return amount;
-}
-
-function loseMarks(fraction) {
-  state.marks *= (1 - fraction);
-}
-
-const BOOST_NAMES = { clickBoost: "Clicks", marksBoost: "Marks", ideasBoost: "Ideas" };
-
-function boost(kind, times, seconds) {
-  state.effects.push({ kind, times, until: state.time + seconds });
-}
-
-function addPeople(id, count) {
-  state.people[id] = howMany(id) + count;
-}
-
-
-/* =====================================================================
-   STORY LOG
-   ===================================================================== */
-
-function tell(text) {
-  state.log.unshift(text);
-  state.log = state.log.slice(0, 40);   // keep the 40 newest
-  drawLog();
-}
-
-function drawLog() {
-  document.getElementById("log").innerHTML = state.log.map(t => `<p>${t}</p>`).join("");
-}
-
-
-/* =====================================================================
-   THE CAVE WALL — symbols appear where marks are carved
-   ===================================================================== */
-
-const wall = document.getElementById("wall");
-const MAX_GLYPHS = 160;   // oldest symbols fade away after this many
-const PAINT_COLORS = ["#c8643c", "#e8b070", "#2b1d16", "#f1e6d6", "#a33a2a"];
-
-function currentGlyphs() {
-  const d = latestDiscovery();
-  return d ? d.glyphs : FIRST_GLYPHS;
-}
-
-// Carve one symbol at x%, y% (random if not given)
-function carveGlyph(xPercent, yPercent) {
-  const g = document.createElement("div");
-  g.className = "glyph";
-  g.textContent = pickRandom(currentGlyphs());
-  g.style.left = (xPercent ?? 4 + Math.random() * 88) + "%";
-  g.style.top  = (yPercent ?? 6 + Math.random() * 82) + "%";
-  g.style.fontSize = (14 + Math.random() * 18) + "px";
-  g.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 30 - 15}deg)`;
-  if (hasDiscovered("pigments")) {
-    g.classList.add("painted");
-    g.style.color = pickRandom(PAINT_COLORS);
-  }
-  wall.appendChild(g);
-
-  const all = wall.querySelectorAll(".glyph");
-  if (all.length > MAX_GLYPHS) all[0].remove();
-}
-
-wall.addEventListener("click", (event) => {
-  const box = wall.getBoundingClientRect();
-  const x = (event.clientX - box.left) / box.width * 100;
-  const y = (event.clientY - box.top) / box.height * 100;
-  const gained = marksPerClick();
-  addMarks(gained);
-  carveGlyph(x, y);
-  showFloater("+" + pretty(gained), event.clientX, event.clientY);
-  document.getElementById("wallHint").classList.add("hidden");
-  updateScreen();
+// ---------- the den: a low heap of small shells with a dark hollow where the octopus hides ----------
+BSPR.house=bcanvas(32,32,(R)=>{
+  const ell=(cx,cy,rx,ry,c,d,h)=>{
+    for(let y=-ry-1;y<=ry+1;y++){const k=1-(y/(ry+1))**2;if(k<0)continue;const w=Math.round((rx+1)*Math.sqrt(k));R(cx-w,cy+y,w*2+1,1,INK)}
+    for(let y=-ry;y<=ry;y++){const k=1-(y/ry)**2;if(k<0)continue;const w=Math.round(rx*Math.sqrt(k));R(cx-w,cy+y,w*2+1,1,c);if(w>1)R(cx+w-1,cy+y,1,1,d)}
+    R(cx-Math.round(rx*.5),cy-Math.round(ry*.5),1,1,h)};
+  const C=[['#f2a7b5','#c9707f'],['#fff4dc','#d8c3a0'],['#f6c49a','#c98b5e'],['#d8c4ec','#a58cc2']];let k=0;
+  const sh=(x,y)=>{const c=C[k++%4];ell(x,y,3,2,c[0],c[1],'#ffffff')};
+  sh(16,11);sh(13,15);sh(19,15);
+  for(let y=19;y<=29;y++){const inset=y===19?3:y===20?1:0;R(10+inset,y,13-inset*2,1,INK);R(11+inset,y,11-inset*2,1,'#0f1c28')}
+  sh(7,18);sh(13,18);sh(19,18);sh(25,18);
+  sh(4,23);sh(9,23);sh(23,23);sh(28,23);
+  sh(3,28);sh(8,28);sh(24,28);sh(29,28);
+  R(14,25,1,1,'#9ff3ff');R(18,27,1,1,'#9ff3ff');
 });
-
-function showFloater(text, x, y, color) {
-  const el = document.createElement("div");
-  el.className = "floater";
-  el.textContent = text;
-  el.style.left = (x + 8) + "px";
-  el.style.top  = (y - 24) + "px";
-  if (color) el.style.color = color;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 800);
+// ---------- food & ore sprites ----------
+ICON.fish=sprite([E16,E16,E16,".......kkk......",".....kkxxXk.....","....kxzxxXXk....","...kxzxxxXXk....","...kxxxxXXk.....","..kxxxxXXXk.....","..kXxxXXXk......","...kXXXkk.......","....kkk.........",E16,E16,E16,E16],16,{...PAL,x:'#3b4a6b',X:'#1f2638',z:'#8fa3c8'});
+ICON.meal=sprite(["......W..W......",".....W..W.......","....kkkkkkkk....","...kjjjJjjJjk...","..kkkkkkkkkkkk..","..kuuuuuuuuuuk..","...kuUuuuuUuk...","....kkkkkkkk....",E16,E16,E16],16);
+ICON.copper=sprite([E16,E16,E16,"......kkkk......",".....kWWzzk.....","....kWWWzzzk....","....kWzzzzzk....","....kzzzzzAk....",".....kzzAAk.....","......kkkk......",E16,E16,E16,E16,E16,E16],16,{...PAL,A:'#b8b8cc'});
+ICON.coal=sprite([E16,E16,E16,".......kk.......","......kWvk......",".....kWvvvk.....","....kvvvvVVk....","...kvvvvVVk.....","....kVVVVk......",".....kkkk.......",E16,E16,E16,E16,E16,E16],16);
+MINI.fish=sprite(["..kkkk..",".kzxxXk.","kxxxXXk.",".kXXXk..","..kkk..."],5,{...PAL,x:'#3b4a6b',X:'#1f2638',z:'#8fa3c8'},8);
+MINI.meal=sprite([".kkkkkk.","kjjJjjJk","kkkkkkkk",".kuUuuk.","..kkkk.."],5,PAL,8);
+MINI.copper=sprite(["..kkkk..",".kWWzk..","kWzzzzk.","kzzzzAk.",".kkkkk.."],5,{...PAL,A:'#b8b8cc'},8);
+MINI.coal=sprite(["...kk...","..kWvk..",".kvvVVk.","kvvVVk..",".kkkk..."],5,PAL,8);
+MINI.piece=sprite(["..kk....",".kjjk...","kkjjkkk.","kjjjjjjk","kjjjjjk.","kkkkkk.."],6,PAL,8);
+ICON.explore=sprite([E16,E16,".....kkkkkk.....","....kWWWWWWk....","...kWWWrWWWWk...","...kWWWrrWWWk...","...kWWWrrWWWk...","...kWWWkkWWWk...","...kWWWqqWWWk...","...kWWWqqWWWk...","....kWWWqWWk....",".....kkkkkk.....",E16,E16,E16,E16],16);
+ICON.gem=sprite([E16,E16,"..........W.....",".........WWW....","......kkkkW.....",".....kWWzzk.....","....kWWWzzzk....","....kWzzzzzk....","....kzzzzzAk....",".....kzzAAk.....","......kkkk......","..W.............",".WWW............","..W.............",E16,E16],16,{...PAL,z:'#f4f0ff',A:'#c9b8ee'});
+MINI.gem=sprite(["......W.","..kkkWWW",".kWWzkW.","kWzzzzk.","kzzzAAk.",".kkkkk.."],6,{...PAL,z:'#f4f0ff',A:'#c9b8ee'},8);
+const RES=[['wood','Algae'],['stone','Shells'],['copper','Pearls'],['gem','Polished pearls'],['coal','Sea glass'],['fish','Mussels'],['meal','Meals']];
+const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',icon:ICON.stone},{id:'fish',name:'Mussels',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal},{id:'explore',name:'Explore',icon:ICON.explore}];
+const ORE_CHANCE=.035, HUNGRY_AT=30;
+const BREED_MEALS=10, EGG_TIME=30, GROW_RATE=1/200; // eggs hatch after 30 game-seconds; babies take ~200 game-seconds to grow up
+const TRAITS=[ // individual traits, passed from parents to babies
+  {id:'algae',icon:'\u{1F33F}',name:'Kelp sense',desc:'A head start at gathering algae, and sometimes finds sea glass in the kelp',hint:'parents who gathered lots of algae'},
+  {id:'shells',icon:'\u{1F41A}',name:'Shell sense',desc:'A head start at digging shells, with double the chance of pearls and sea glass',hint:'parents who dug lots of shells'},
+  {id:'mussels',icon:'\u{1F9AA}',name:'Mussel nose',desc:'A head start at finding mussels, and sometimes a pearl inside one',hint:'parents who foraged lots of mussels'},
+  {id:'cook',icon:'\u{1F525}',name:'Vent chef',desc:'A head start at cooking, and sometimes makes two meals from one mussel',hint:'parents who cooked a lot'},
+  {id:'swift',icon:'\u{1F4A8}',name:'Jet swimmer',desc:'Swims 20% faster',hint:'parents who swam long distances'},
+  {id:'thrifty',icon:'\u{1F343}',name:'Slow metabolism',desc:'Gets hungry 28% slower',hint:'parents who went hungry'},
+  {id:'social',icon:'\u{1F497}',name:'Gentle',desc:'Comfortable close to others, waves hello, works 20% faster next to a friend',hint:'friendly parents, and more likely every generation'},
+  {id:'tools',icon:'\u{1F527}',name:'Tool use',desc:'Uses shells and stones as tools: all work 20% faster',hint:'hard-working parents, from generation 3'},
+  {id:'mimic',icon:'\u{1F3A8}',name:'Mimicry',desc:'Shifts color to blend in. Rare finds are 50% more likely',hint:'a rare surprise, from generation 4'},
+  {id:'adventure',icon:'\u{1F9ED}',name:'Adventurer',desc:'Can go exploring beyond the reef and bring treasures home',hint:'solving the secret of the reef'}
+];
+const TR=Object.fromEntries(TRAITS.map(t=>[t.id,t])),BASE_TRAITS=['algae','shells','mussels','cook','swift','thrifty'];
+const FOCUS_CHANCE=.75,BOTH_CHANCE=.5,ONE_CHANCE=.25;
+function has(v,t){return!!(v&&v.traits&&v.traits.includes(t))}
+function tp(v){return 1+.25*(Math.min((v&&v.gen)||1,5)-1)} // trait power: each generation makes inherited traits 25% stronger (up to Gen 5)
+function genBonus(v){return .05*(Math.min((v&&v.gen)||1,5)-1)} // and kids start out a little better at every job
+function colonyGen(){return folk.reduce((m,v)=>Math.max(m,v.gen||1),1)}
+function personalSpace(v){ // octopuses slowly get used to each other every generation; Gentle ones are fine up close
+  return Math.max(.7,2.6*Math.pow(.94,colonyGen()-1)*(has(v,'social')?.45:1))}
+const JOB_KEYS=['chop','mine','fish','cook'],SKILL_K={chop:120,mine:120,fish:30,cook:25},SKILL_TRAIT={chop:'algae',mine:'shells',fish:'mussels',cook:'cook'};
+const SKILL_MIN=.45,SKILL_GAIN=.75,TRAIT_HEAD=.6; // novices work at 45% speed; experience brings that up to ~120%; the job's trait is worth a head start
+function skill(v,job){if(!SKILL_K[job])return 1;const x=((v.xp&&v.xp[job])||0)+(has(v,SKILL_TRAIT[job])?SKILL_K[job]*TRAIT_HEAD*tp(v):0);return SKILL_MIN+genBonus(v)+SKILL_GAIN*(1-Math.exp(-x/SKILL_K[job]))}
+function skillName(m){return m<.6?'Novice':m<.8?'Apprentice':m<.98?'Skilled':m<1.1?'Expert':'Master'}
+function swapJobs(){ // octopuses drift toward the jobs they're better at, without changing how many work each job
+  const ws=folk.filter(v=>adult(v)&&!breeding(v)&&JOB_KEYS.includes(v.job)&&!v.cooking);
+  for(const a of ws)for(const b of ws){if(a===b||a.job===b.job)continue;
+    const now=skill(a,a.job)+skill(b,b.job),swap=skill(a,b.job)+skill(b,a.job);
+    if(swap>now+.12){const j=a.job;a.job=b.job;b.job=j;a.task=b.task=null;a.state=b.state='idle';a.think=b.think=.2;
+      if(onScreen(a)||onScreen(b))addFloat((a.x+b.x)/2*T,(a.y+b.y)/2*T-26,a.name+' and '+b.name+' swapped jobs',null,'#d8ecf8',3);hud();return}}
 }
-
-
-/* =====================================================================
-   THE GLOWING CRACK — click it quickly for a bonus
-   ===================================================================== */
-
-let crack = null;
-let crackGoneAt = 0;
-
-function spawnCrack() {
-  crack = document.createElement("div");
-  crack.className = "crack";
-  crack.textContent = "✨";
-  crack.style.left = (10 + Math.random() * 80) + "%";
-  crack.style.top  = (12 + Math.random() * 70) + "%";
-  crack.addEventListener("click", (event) => {
-    event.stopPropagation();          // don't also count as a normal wall click
-    if (Math.random() < 0.5) {
-      const got = gainMarks(90);
-      tell(`✨ You find a vein of perfect flint! +${pretty(got)} marks.`);
-      showFloater("+" + pretty(got), event.clientX, event.clientY);
-    } else {
-      boost("clickBoost", 7, 15);
-      tell("✨ The rock here is soft as butter! Clicks ×7 for 15 seconds.");
-      showFloater("Clicks ×7!", event.clientX, event.clientY);
-    }
-    removeCrack();
-    updateScreen();
-  });
-  wall.appendChild(crack);
-  crackGoneAt = state.time + CRACK_LASTS;
+function newXp(){return{chop:0,mine:0,fish:0,cook:0,swim:0,social:0,hungry:0}}
+function oreChance(v){return ORE_CHANCE*(has(v,'shells')?1+tp(v):1)*(has(v,'mimic')?1.5:1)}
+function traitChips(v){return(v.traits||[]).map(t=>`<span title="${TR[t].desc}">${TR[t].icon} ${TR[t].name}</span>`).join(', ')||'none yet'}
+function babyTraits(e){ // inherit from parents (a focused trait is very likely), plus a chance of a new one sparked by the parents' lives
+  const mt=e.mt||[],ft=e.ft||[],out=new Set();
+  for(const t of new Set([...mt,...ft])){const p=t===e.focus?FOCUS_CHANCE:mt.includes(t)&&ft.includes(t)?BOTH_CHANCE:ONE_CHANCE;if(rnd()<p)out.add(t)}
+  const x={...newXp()};for(const o of[e.mx||{},e.fx||{}])for(const k in o)x[k]=(x[k]||0)+o[k];
+  const g=e.gen||2,w={algae:x.chop,shells:x.mine,mussels:x.fish*2,cook:x.cook*2,swift:x.swim/8,thrifty:x.hungry/3+2,social:x.social*6+4*(g-1),
+    tools:g>=3?(x.chop+x.mine+x.fish)/5:0,mimic:g>=4?4:0,adventure:S.adventure?40+x.swim/4:0};
+  let total=0;for(const k in w)if(!out.has(k))total+=w[k];
+  if(total>0&&rnd()<Math.min(.45,.12+total/400)){let r=rnd()*total;for(const k in w){if(out.has(k))continue;r-=w[k];if(r<=0){out.add(k);break}}}
+  return[...out];
 }
+const NAMES=['Coral','Inky','Pip','Nori','Mochi','Squish','Bubbles','Kelpie','Marlo','Tula','Wren','Ziggy','Opal','Brine','Juno','Lumi','Tako','Suki','Moss','Dot','Fig','Rue','Sprat','Cove','Puddle','Ember','Sol','Minnow','Pebble','Tide'];
+const FATHER_LIFE=300,MALE_LIFE=[1500,1800],FADE_TIME=60; // real seconds: fathers live ~5 min after mating; males who never father ~25-30 min; the last minute they fade
+const GAME_SPEED=0.5; // octopuses and the hermit crab move at half speed for a chill pace
 
-function removeCrack() {
-  if (crack) crack.remove();
-  crack = null;
-  state.nextCrackAt = state.time + randomBetween(CRACK_EVERY_MIN, CRACK_EVERY_MAX);
+const BUILD={
+  fire:{name:'Vent',w:2,h:2,cost:{},hits:1},
+  house:{name:'Den',w:2,h:2,cost:{stone:20,wood:10},hits:36,tip:'A cozy den built from shells. Each female claims one and lays her eggs there'},
+  store:{name:'Clam cache',w:2,h:2,cost:{wood:20,stone:10},hits:20,tip:'Another drop-off point, so fewer long trips'},
+  bench:{name:'Tool rock',w:1,h:1,cost:{wood:10,stone:6},hits:10,once:true,tip:'Sharper tools: everyone works 50% faster'},
+  rake:{name:'Mussel rake',w:1,h:1,cost:{wood:30,stone:30},hits:12,item:true,tip:'A tool. A forager carrying it finds mussels 50% faster'},
+  grill:{name:'Hot stone',w:1,h:1,cost:{wood:30,stone:30},hits:12,once:true,tip:'Cooks cook 50% faster'},
+  dog:{name:'Crab shell',w:1,h:1,cost:{wood:6},hits:6,once:true,tip:'A roomy spare shell for your hermit crab to nap in'},
+  road:{name:'Path',w:1,h:1,cost:{stone:1},tip:'A pebble path. Octopuses move faster on it. Drag to paint'}
+};
+const FOLK=['#a77bd6','#e86a8a','#4fb3a9','#d9534f','#6f8fdc','#e0b23a','#8fbf5a','#c98ab0'];
+
+// ================= state =================
+let S, folk=[], parts=[], floats=[], flies=[], nextId=1;
+const shakeT=new Float32Array(N).fill(-9);
+const WF={x:0,y:0,face:-1,state:'follow',anim:0,happy:0,stuck:0,path:[],moving:false};
+let tool='look', time=0, hover=null, spawnT=0;
+
+function vnoise(r,cell){const gw=Math.ceil(W/cell)+2,gh=Math.ceil(H/cell)+2,g=[];for(let i=0;i<gw*gh;i++)g.push(r());const sm=t=>t*t*(3-2*t);
+  return(x,y)=>{const fx=x/cell,fy=y/cell,ix=fx|0,iy=fy|0,tx=sm(fx-ix),ty=sm(fy-iy);const a=g[iy*gw+ix],b=g[iy*gw+ix+1],c=g[(iy+1)*gw+ix],d=g[(iy+1)*gw+ix+1];return a+(b-a)*tx+(c-a)*ty+(a-b-c+d)*tx*ty}}
+function fbm(r,cell){const a=vnoise(r,cell),b=vnoise(r,cell/2);return(x,y)=>a(x,y)*.7+b(x,y)*.3}
+
+function newGame(seed){
+  S={seed:seed??(rnd()*1e9|0),ground:new Uint8Array(N),obj:new Uint8Array(N),hp:new Uint8Array(N),timer:new Float32Array(N),varr:new Uint8Array(N),
+    bmap:new Int16Array(N),buildings:[],res:{wood:0,stone:0,copper:0,coal:0,fish:0,meal:8},step:0,cooked:0,found:[],was:new Uint8Array(N),regrowT:0};
+  genMap();addBuilding('fire',W/2-1,H/2-1,true);
+  folk=[];const bt=[...BASE_TRAITS].sort(()=>rnd()-.5);['f','m','f','m','f'].forEach((sx,k)=>spawnFolk(k===0,'idle',100,{sex:sx,traits:[bt[k]]}));
+  S.found=[...new Set(folk.flatMap(v=>v.traits))];
+  startArrival();resetActors();centerOnFire();
 }
-
-
-/* =====================================================================
-   RANDOM EVENTS — show a card with choices
-   ===================================================================== */
-
-let currentEvent = null;
-let eventEndsAt = 0;
-
-function startEvent() {
-  const possible = EVENTS.filter(e => !e.needs || hasDiscovered(e.needs));
-  currentEvent = pickRandom(possible);
-  eventEndsAt = state.time + EVENT_LASTS;
-
-  document.getElementById("eventTitle").textContent = currentEvent.title;
-  document.getElementById("eventText").textContent  = currentEvent.text;
-  const box = document.getElementById("eventChoices");
-  box.innerHTML = "";
-  for (const choice of currentEvent.choices) {
-    const btn = document.createElement("button");
-    btn.textContent = choice.label;
-    btn.addEventListener("click", () => {
-      choice.do();
-      tell(`${currentEvent.title}: ${choice.result}`);
-      endEvent();
-      updateScreen();
-    });
-    box.appendChild(btn);
-  }
-  document.getElementById("eventCard").classList.remove("hidden");
+// ----- a new reef: the octopuses start far apart, confused, and slowly drift together -----
+function openSpot(x,y){for(let dy=-1;dy<=2;dy++)for(let dx=-1;dx<=1;dx++)if(!walkXY(x+dx,y+dy))return false;return true} // a clear patch, so nobody starts tangled in kelp
+function startArrival2(){ // pick clear, well-spread starting spots from everywhere the octopuses can actually reach
+  const f=fire(),cx=f.x+1,cy=f.y+1;let s0=null;
+  for(let y=f.y-1;y<=f.y+f.h&&s0==null;y++)for(let x=f.x-1;x<=f.x+f.w&&s0==null;x++)if(walkXY(x,y))s0=y*W+x;
+  if(s0==null)return false;
+  const cand=[];bfs(s0,i=>{const x=i%W,y=i/W|0,d=Math.hypot(x+.5-cx,(y+.5-cy)*1.2);if(d>=9&&d<=15&&openSpot(x,y))cand.push(i);return null});
+  for(let i=cand.length-1;i>0;i--){const j=rnd()*(i+1)|0;[cand[i],cand[j]]=[cand[j],cand[i]]}
+  const pick=[];let sep=8;
+  while(pick.length<folk.length&&sep>=3){for(const i of cand){if(pick.length>=folk.length)break;const x=i%W,y=i/W|0;if(pick.every(p=>Math.hypot(p%W-x,(p/W|0)-y)>=sep))pick.push(i)}sep-=2}
+  if(pick.length<folk.length)return false;
+  const used=[];let ok=0;
+  folk.forEach((v,k)=>{const sx=pick[k]%W,sy=pick[k]/W|0,ang=Math.atan2(sy+.5-cy,sx+.5-cx);
+    for(let tries=0;tries<40;tries++){const ta=ang+(rnd()-.5)*.6,td=2.5+rnd()*1.8,tx=Math.floor(cx+Math.cos(ta)*td),ty=Math.floor(cy+Math.sin(ta)*td),t=ty*W+tx;
+      if(!walkXY(tx,ty)||used.includes(t))continue;
+      v.x=sx+.5;v.y=sy+.65;const r=bfs(tileOf(v),i=>i===t?1:null);if(!r)continue;
+      v.path=r.path;v.arr={t:0};v.state='idle';v.task=null;v.face=v.x<cx?1:-1;used.push(t);ok++;break}});
+  if(ok>0)S.arriving=true;
+  return ok>0;
 }
-
-function endEvent() {
-  currentEvent = null;
-  document.getElementById("eventCard").classList.add("hidden");
-  state.nextEventAt = state.time + randomBetween(EVENT_EVERY_MIN, EVENT_EVERY_MAX);
+function startArrival(){
+  if(startArrival2())return;
+  startArrivalOld();
 }
-
-
-/* =====================================================================
-   BUILDING THE SHOP BUTTONS
-   ===================================================================== */
-
-function makeButton(container, onClick) {
-  const btn = document.createElement("button");
-  btn.className = "shop-item";
-  btn.addEventListener("click", onClick);
-  container.appendChild(btn);
-  return btn;
-}
-
-for (const p of PEOPLE) {
-  p.button = makeButton(document.getElementById("people"), () => {
-    const price = priceOf(p);
-    if (state.marks < price) return;
-    state.marks -= price;
-    if (howMany(p.id) === 0) tell(`${p.emoji} ${p.joinText}`);
-    state.people[p.id] = howMany(p.id) + 1;
-    updateScreen();
-  });
-}
-
-for (const d of DISCOVERIES) {
-  d.button = makeButton(document.getElementById("discoveries"), () => {
-    if (!isAvailable(d) || state.ideas < d.cost) return;
-    state.ideas -= d.cost;
-    state.discovered.push(d.id);
-    tell(`${d.emoji} <b>${d.name}!</b> ${d.story}`);
-    if (d.rival) tell(`⚖️ You chose ${d.name}. ${findDiscovery(d.rival).name} is lost to history (this time).`);
-    for (let i = 0; i < 6; i++) carveGlyph();   // show off the new symbols
-    updateScreen();
-  });
-}
-
-// Only touch a button's HTML when its text changes (so clicks aren't lost)
-function setHtml(element, html) {
-  if (element.lastHtml !== html) { element.innerHTML = html; element.lastHtml = html; }
-}
-
-
-/* =====================================================================
-   UPDATING THE SCREEN — copies numbers from the state onto the page
-   ===================================================================== */
-
-function updateScreen() {
-  document.getElementById("marks").textContent          = pretty(state.marks);
-  document.getElementById("marksPerSecond").textContent = pretty(marksPerSecond());
-  document.getElementById("ideas").textContent          = pretty(state.ideas);
-  document.getElementById("ideasPerSecond").textContent = pretty(ideasPerSecond());
-
-  const latest = latestDiscovery();
-  document.getElementById("eraName").textContent = latest ? latest.era : "The Age of Scratches";
-
-  // Active effects
-  document.getElementById("effects").innerHTML = state.effects.map(e => {
-    const good = e.times >= 1;
-    const label = e.times === 0 ? `${BOOST_NAMES[e.kind]} stopped` : `${BOOST_NAMES[e.kind]} ×${e.times}`;
-    return `<span class="effect ${good ? "good" : "bad"}">${label} (${Math.ceil(e.until - state.time)}s)</span>`;
-  }).join("");
-
-  // Ideas + discoveries appear after the first few marks
-  const ideasVisible = state.totalMarks >= IDEAS_APPEAR_AT;
-  document.getElementById("ideasBox").classList.toggle("hidden", !ideasVisible);
-  document.getElementById("discoveriesPanel").classList.toggle("hidden", !ideasVisible);
-
-  // People: only show the ones whose discovery has happened
-  for (const p of PEOPLE) {
-    const price = priceOf(p);
-    const canAfford = state.marks >= price;
-    const extra = personBoost(p);
-    let what = `+${pretty(p.marksPerSecond * extra)} marks/sec`;
-    if (p.ideasPerSecond) what += `, +${pretty(p.ideasPerSecond * extra)} ideas/sec`;
-    p.button.classList.toggle("hidden", !hasDiscovered(p.needs));
-    p.button.disabled = !canAfford;
-    p.button.classList.toggle("affordable", canAfford);
-    setHtml(p.button, `
-      <div>
-        <div class="name">${p.emoji} ${p.name}${extra > 1 ? ` <span class="ideas-color">×${extra}</span>` : ""}</div>
-        <div class="desc">${what} each</div>
-        <div class="desc">Costs ${pretty(price)} marks</div>
-      </div>
-      <div class="owned">${howMany(p.id)}</div>`);
-  }
-
-  // Discoveries: show every one you could research right now
-  let unknown = 0;
-  for (const d of DISCOVERIES) {
-    const available = isAvailable(d);
-    if (!available && !hasDiscovered(d.id) && !isLockedOut(d)) unknown++;
-    const canAfford = available && state.ideas >= d.cost;
-    d.button.classList.toggle("hidden", !available);
-    d.button.classList.toggle("crossroads", !!d.rival);
-    d.button.classList.toggle("affordable", canAfford);
-    d.button.disabled = !canAfford;
-    setHtml(d.button, `
-      <div>
-        ${d.rival ? `<div class="choice-label">⚖️ Crossroads: ${d.question} (choose one)</div>` : ""}
-        <div class="name">${d.emoji} ${d.name}</div>
-        <div class="desc">${d.desc}</div>
-        <div class="desc">Costs ${pretty(d.cost)} ideas</div>
-      </div>`);
-  }
-
-  setHtml(document.getElementById("discoveredList"),
-    state.discovered.map(id => { const d = findDiscovery(id); return `<span title="${d.name}">${d.emoji}</span>`; }).join(""));
-  setHtml(document.getElementById("unknownCount"),
-    unknown ? `❓ ${unknown} more discoveries not yet imagined…` : "");
-
-  // Event countdown bar
-  if (currentEvent) {
-    const left = Math.max(0, (eventEndsAt - state.time) / EVENT_LASTS);
-    document.getElementById("eventTimer").style.width = (left * 100) + "%";
+function startArrivalOld(){
+  const f=fire(),cx=f.x+1,cy=f.y+1;let k=0;S.arriving=true;
+  for(const v of folk){
+    const ang=k*6.283/folk.length+.4+rnd()*.5;k++;
+    for(let tries=0;tries<80;tries++){
+      const a=ang+(rnd()-.5)*.6,d=9+rnd()*3,sx=Math.floor(cx+Math.cos(a)*d*.7),sy=Math.floor(cy+Math.sin(a)*d);if(!openSpot(sx,sy))continue;
+      const ta=ang+(rnd()-.5)*.4,td=2.5+rnd()*1.5,tx=Math.floor(cx+Math.cos(ta)*td),ty=Math.floor(cy+Math.sin(ta)*td);if(!walkXY(tx,ty))continue;
+      v.x=sx+.5;v.y=sy+.65;const t=ty*W+tx,r=bfs(tileOf(v),i=>i===t?1:null);if(!r||r.path.length>34)continue;
+      v.path=r.path;v.arr={t:0};v.state='idle';v.task=null;v.face=v.x<cx?1:-1;break}
   }
 }
-
-
-/* =====================================================================
-   SAVING & LOADING — uses the browser's built-in storage
-   ===================================================================== */
-
-const SAVE_KEY = "first-marks-save-v2";
-
-function save() {
-  state.lastSaved = Date.now();
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* saving not allowed here */ }
+function arrStep(v,dt){
+  v.anim+=dt;v.arr.t+=dt;const r=followPath(v,dt,1.4);
+  if(r===true||r==='blocked'||!v.path.length||v.arr.t>45){v.arr=null;v.path=[];v.state='idle';v.think=.5+rnd();const f=fire();v.face=v.x<f.x+1?1:-1}
 }
-
-function load() {
-  try {
-    const text = localStorage.getItem(SAVE_KEY);
-    if (!text) return false;
-    state = Object.assign(newGame(), JSON.parse(text));
-
-    // Offline progress: your people kept working while you were away
-    const secondsAway = (Date.now() - state.lastSaved) / 1000 * GAME_SPEED;
-    state.effects = [];   // temporary boosts don't last while you're gone
-    const marksEarned = marksPerSecond() * secondsAway;
-    const ideasEarned = ideasPerSecond() * secondsAway;
-    if (marksEarned >= 1) {
-      addMarks(marksEarned);
-      state.ideas += ideasEarned;
-      tell(`🌙 While you were away, your people carved ${pretty(marksEarned)} marks and had ${pretty(ideasEarned)} ideas.`);
-    }
-    return true;
-  } catch (e) { return false; }   // bad save — start fresh
-}
-
-document.getElementById("resetButton").addEventListener("click", () => {
-  if (confirm("Really start over? You will lose all progress.")) {
-    state = newGame();
-    wall.querySelectorAll(".glyph").forEach(g => g.remove());
-    if (crack) { crack.remove(); crack = null; }
-    if (currentEvent) endEvent();
-    document.getElementById("wallHint").classList.remove("hidden");
-    tell("🔥 A lone figure sits in a dark cave, holding a sharp stone…");
-    save();
-    updateScreen();
+function genMap(){
+  const r=mulberry(S.seed),nf=fbm(r,10),nr=fbm(r,6),nw=fbm(r,15),cx=W/2,cy=H/2;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x,d=Math.hypot(x+.5-cx,(y+.5-cy)*1.2);S.varr[i]=r()*16|0;
+    if(d<5)continue;
+    const f=nf(x,y),k=nr(x,y);
+    if(k>0.655&&r()<0.25)setObj(i,O_ROCK);
+    else if((f>0.5&&r()<0.22)||r()<0.01)setObj(i,O_TREE);
+    else if(r()<0.002)setObj(i,O_ROCK);
   }
+  for(let i=0;i<N;i++){if(S.ground[i]!==G_GRASS)continue;const x=i%W,y=i/W|0;
+    if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const nx=x+dx,ny=y+dy;return inb(nx,ny)&&S.ground[ny*W+nx]===G_WATER})){S.ground[i]=G_SAND;if(S.obj[i]===O_TREE&&r()<.6)S.obj[i]=O_NONE}}
+  const ensure=(kind,want,rad)=>{for(let tries=0;tries<10;tries++){let c=0;for(let i=0;i<N;i++)if(S.obj[i]===kind&&dist2(i,cx,cy)<rad*rad)c++;if(c>=want)return;
+    const a=r()*6.28,dd=rad*(.5+r()*.4),sx=Math.round(cx+Math.cos(a)*dd),sy=Math.round(cy+Math.sin(a)*dd);
+    for(let y=sy-2;y<=sy+2;y++)for(let x=sx-2;x<=sx+2;x++){if(x<1||y<1||x>=W-1||y>=H-1)continue;const i=y*W+x;
+      if(S.ground[i]!==G_WATER&&S.obj[i]===O_NONE&&dist2(i,cx,cy)>36&&r()<.65)setObj(i,kind)}}};
+  ensure(O_TREE,10,9);ensure(O_ROCK,6,14);ensure(O_TREE,25,18);
+  addBoulders(r);
+}
+function boulderSpot(r,px,py){ // a little cluster of 3-4 boulders ringed with soft sand
+  const want=3+(r()<.5?1:0),tiles=[[px,py]];let guard=0;
+  while(tiles.length<want&&guard++<30){const[bx,by]=tiles[r()*tiles.length|0],[dx,dy]=[[1,0],[-1,0],[0,1],[0,-1]][r()*4|0],nx=bx+dx,ny=by+dy;
+    if(inb(nx,ny)&&!tiles.some(([x,y])=>x===nx&&y===ny))tiles.push([nx,ny])}
+  for(const[x,y]of tiles){if(!inb(x,y))continue;const i=y*W+x;S.ground[i]=G_WATER;S.obj[i]=O_NONE}
+  for(const[x,y]of tiles)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(!inb(nx,ny))continue;const i=ny*W+nx;
+    if(S.ground[i]===G_GRASS){S.ground[i]=G_SAND;S.obj[i]=O_NONE}}
+}
+function addBoulders(r){
+  const cx=W/2,cy=H/2,spots=[];
+  for(let k=0;k<400&&spots.length<70;k++){const x=3+r()*(W-6)|0,y=3+r()*(H-6)|0;
+    if(Math.hypot(x-cx,(y-cy)*1.2)<10||spots.some(([a,b])=>Math.hypot(a-x,b-y)<9))continue;spots.push([x,y]);boulderSpot(r,x,y)}
+  // a mussel spot near camp, with a clear lane to it so foragers can start right away
+  const a=r()*6.28,bx=Math.round(cx+Math.cos(a)*8),by=Math.round(cy+Math.sin(a)*7);boulderSpot(r,bx,by);
+  for(let t=0;t<=1;t+=.05){const lx=Math.round(cx+(bx-cx)*t),ly=Math.round(cy+(by-cy)*t);
+    for(let y=ly-1;y<=ly+1;y++)for(let x=lx-1;x<=lx+1;x++){if(!inb(x,y))continue;const i=y*W+x;if(S.ground[i]!==G_WATER)S.obj[i]=O_NONE}}
+}
+function setObj(i,o){S.obj[i]=o;S.hp[i]=o===O_TREE?TREE_HP:o===O_ROCK?ROCK_HP:0}
+function dist2(i,cx,cy){const x=i%W+.5,y=(i/W|0)+.5;return(x-cx)**2+(y-cy)**2}
+function fire(){return S.buildings.find(b=>b&&b.type==='fire')}
+function resetActors(){
+  const s=folk[0]||{x:W/2,y:H/2+2};WF.x=s.x+1;WF.y=s.y+.3;WF.state='follow';WF.path=[];
+  flies=[];for(let k=0;k<10;k++)flies.push({x:W/2+(rnd()-.5)*30,y:H/2+(rnd()-.5)*20,ph:rnd()*9,col:['#f4d35e','#e8834f','#9ec5ff','#ffffff'][k%4]});
+}
+function natLife(){return MALE_LIFE[0]+rnd()*(MALE_LIFE[1]-MALE_LIFE[0])}
+function fading(v){return v.sex==='m'&&v.lifeLeft!=null&&v.lifeLeft<=FADE_TIME}
+function pickName(){const used=new Set(folk.map(v=>v.name)),free=NAMES.filter(n=>!used.has(n));return free.length?free[rnd()*free.length|0]:'Octo '+nextId}
+function spawnFolk(isSummer,job='idle',food=100,o={}){
+  let spot=null;
+  if(o.x!=null&&walkXY(Math.floor(o.x),Math.floor(o.y-.15)))spot={x:o.x-.5,y:o.y-.65};
+  if(!spot){const f=fire(),cx=f.x+1,cy=f.y+1;
+    for(let tries=0;tries<40&&!spot;tries++){const a=rnd()*6.28,d=2+rnd()*2,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(walkXY(x,y))spot={x,y}}
+    if(!spot)spot={x:cx,y:cy+1}}
+  const c=FOLK[(folk.length-1+FOLK.length)%FOLK.length],col=o.col||(isSummer?SUMMER_COL:c);
+  const v={id:nextId++,summer:isSummer,job,food,x:spot.x+.5,y:spot.y+.65,path:[],state:'rest',task:null,carry:null,hitT:0,fishT:0,catch:0,cooking:false,
+    think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,col,spr:o.multi?multiSprites(col,o.col2,o.col3):isSummer&&!o.col?SUMMER:charSprites(octoPal(col)),
+    multi:!!o.multi,col2:o.col2||null,col3:o.col3||null,traits:o.traits||[],xp:Object.assign(newXp(),o.xp||{}),life:o.life||{},mom:o.mom||null,dad:o.dad||null,kids:o.kids||0,
+    name:o.name||(isSummer?'Summer':pickName()),sex:o.sex||(rnd()<.5?'f':'m'),size:o.size??1,gen:o.gen||1,greetT:0};
+  v.lifeLeft=o.lifeLeft??null;if(v.sex==='m'&&v.size>=1&&v.lifeLeft==null)v.lifeLeft=natLife();
+  folk.push(v);return v;
+}
+
+// ================= helpers =================
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+function inb(x,y){return x>=0&&y>=0&&x<W&&y<H}
+function walkable(i){const o=S.obj[i];return S.ground[i]!==G_WATER&&S.bmap[i]===0&&(o===O_NONE||o===O_STUMP||o===O_SAP||o===O_RUBBLE)}
+function walkXY(x,y){return inb(x,y)&&walkable(y*W+x)}
+function forN8(i,fn){const x=i%W,y=i/W|0;for(const[dx,dy]of DIRS){const nx=x+dx,ny=y+dy;if(!inb(nx,ny))continue;const r=fn(ny*W+nx);if(r!==null&&r!==undefined&&r!==false)return r}return null}
+const prev=new Int32Array(N),Q=new Int32Array(N);
+function bfs(start,goal){
+  prev.fill(-1);let h=0,t=0;Q[t++]=start;prev[start]=start;
+  while(h<t){const i=Q[h++];const g=goal(i);
+    if(g!==null&&g!==undefined&&g!==false){const p=[];let c=i;while(c!==start){p.push(c);c=prev[c]}p.reverse();return{path:p,target:g,end:i}}
+    const x=i%W,y=i/W|0;
+    for(let d=0;d<8;d++){const nx=x+DIRS[d][0],ny=y+DIRS[d][1];if(!inb(nx,ny))continue;const n=ny*W+nx;
+      if(prev[n]!==-1||!walkable(n))continue;if(d>=4&&(!walkable(y*W+nx)||!walkable(ny*W+x)))continue;prev[n]=i;Q[t++]=n}}
+  return null;
+}
+function tileOf(a){return Math.min(H-1,Math.max(0,a.y-.15|0))*W+Math.min(W-1,Math.max(0,a.x|0))}
+function bAt(i){const k=S.bmap[i];return k?S.buildings[k-1]:null}
+function afford(c){return Object.entries(c).every(([k,v])=>S.res[k]>=v)}
+function pay(c,sign=-1){for(const[k,v]of Object.entries(c))S.res[k]+=sign*v}
+function count(type,done=true){return S.buildings.filter(b=>b&&b.type===type&&(!done||b.done)).length}
+function hasBench(){return count('bench')>0}
+function popCap(){return 5+2*count('house')}
+function adult(v){return v.size>=1}
+function breeding(v){return v.state==='brood'||v.state==='toDen'||v.state==='toMate'}
+function denOf(v){return S.buildings.find(b=>b&&b.type==='house'&&b.owner===v.id)}
+function ownerOf(b){return b&&b.owner!=null?folk.find(v=>v.id===b.owner):null}
+function denFor(f){const own=denOf(f);if(own)return own.done&&!own.eggs?own:null;return S.buildings.find(b=>b&&b.type==='house'&&b.done&&!b.eggs&&!ownerOf(b))||null}
+function claimDens(){
+  for(const b of S.buildings){if(!b||b.type!=='house'||!b.done)continue;const ow=ownerOf(b);if(b.owner!=null&&!ow)b.owner=null;if(b.owner!=null)continue;
+    const v=folk.find(o=>adult(o)&&o.sex==='f'&&!denOf(o))||folk.find(o=>adult(o)&&!denOf(o));if(!v)continue;b.owner=v.id;
+    addFloat((b.x+1)*T,b.y*T-12,v.name+"'s den",null,'#fff6c8');if(onScreen(v))sfx('pop')}
+}
+function goDen(v,b){const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===b?1:null));if(r){v.path=r.path;return true}return false}
+function mix(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16),j=.88+rnd()*.24;
+  return'#'+[16,8,0].map(sh=>Math.max(0,Math.min(255,Math.round((((A>>sh)&255)*(1-t)+((B>>sh)&255)*t)*j))).toString(16).padStart(2,'0')).join('')}
+let hatchlings=[];
+function startBreeding(f,m,focus){
+  const b=denFor(f);if(!b||S.res.meal<BREED_MEALS)return false;
+  S.res.meal-=BREED_MEALS;b.owner=f.id;b.eggs={mother:f.id,fcol:m.col,fname:m.name,mname:f.name,fid:m.id,mm:!!f.multi,fm:!!m.multi,t:0,stage:'wait',gen:Math.max(f.gen||1,m.gen||1)+1,
+    mt:[...f.traits],ft:[...m.traits],mx:{...f.xp},fx:{...m.xp},focus:focus||null};S.bred=(S.bred||0)+1;
+  for(const v of[f,m]){if(v.carry){for(const[k,a]of Object.entries(v.carry))S.res[k]+=a;v.carry=null}if(v.cooking){S.res.fish++;v.cooking=false}v.task=null}
+  dropRake(f);f.job='idle';f.state='toDen';if(!goDen(f,b)){f.state='brood';b.eggs.stage='brood'}
+  m.lifeLeft=Math.min(m.lifeLeft??FATHER_LIFE,FATHER_LIFE);m.fathered=true;
+  m.state='toMate';m.mateDen=b;if(!goDen(m,b))m.state='idle';
+  sfx('place');hud();return true;
+}
+function babyLook(e){const p=MULTI_CHANCE+(e.mm&&e.fm?MULTI_BOTH:0);return rnd()<p?{multi:true,col2:vivid(),col3:vivid()}:{multi:false}}
+function hatch(b){
+  S.found=S.found||[];
+  const e=b.eggs,mom=folk.find(v=>v.id===e.mother),mcol=mom?mom.col:FOLK[0],ex=b.x*T+16,ey=(b.y+b.h)*T-6,mname=mom?mom.name:'Mama';
+  const n=10+(rnd()*6|0),stay=2+(rnd()<.5?1:0),gen=e.gen||2;
+  for(let k=0;k<n;k++){const a=rnd()*6.28,sp=5+rnd()*6;
+    hatchlings.push({x:ex,y:ey,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.6+3,t:0,stay:k<stay,idx:k,
+      life:k<stay?10.5+k*3.5:16+rnd()*8,gen,...babyLook(e),traits:k<stay?babyTraits(e):[],mom:e.mname||null,dad:e.fname||null,col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
+  // if the mother is the last female, make sure one of the babies who stay is a daughter
+  const lastFemale=!folk.some(v=>v!==mom&&v.sex==='f');
+  hatchlings.filter(h=>h.t===0&&h.stay&&!h.sex).forEach((h,k)=>{h.sex=lastFemale&&k===0?'f':(rnd()<.5?'f':'m')});
+  {const dad=folk.find(v=>v.id===e.fid);if(dad)dad.kids=(dad.kids||0)+stay}
+  if(mom){dropRake(mom);folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
+  addFloat(ex,ey-26,n+' little ones hatched!',null,'#fff6c8',3.5);
+  after(3.2,()=>addFloat(ex,ey-26,mname+' rests now',null,'#ffd9e6',4));
+  after(6.5,()=>addFloat(ex,ey-26,stay+' of them will stay',null,'#fff6c8',3.5));
+  const mc=hatchlings.filter(h=>h.stay&&h.multi&&h.t===0).length;if(mc)after(8.5,()=>addFloat(ex,ey-26,mc>1?mc+' multicolored babies!':'A rare multicolored baby!',null,'#ffd166',4));
+  if(AC&&!muted)[784,659,523,659,784,1047].forEach((f,k)=>tone(f,f,.22,'sine',.035,k*.2));
+  b.eggs=null;b.owner=null;hud();
+}
+function updHatch(dt){
+  for(const h of hatchlings){h.t+=dt;h.ph+=dt;
+    if(h.stay){const k=Math.pow(.5,dt);h.vx*=k;h.vy*=k}else{h.vy-=dt*1.2;h.vx*=1+dt*.06}
+    h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
+    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen,multi:h.multi,col2:h.col2,col3:h.col3,sex:h.sex,traits:h.traits,mom:h.mom,dad:h.dad});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
+      addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);
+      if(!S.babyTip){S.babyTip=1;S.firstBaby=nv.name;S.pearlT=0;after(1.5,()=>toast('Babies hide in the sand, so eels leave them alone. Once they grow up, they will need a den of their own.',8000))}
+      for(const t of nv.traits)if(!S.found.includes(t)){S.found.push(t);const x=nv.x*T,y=nv.y*T-16;
+        after(1.6,()=>{addFloat(x,y,'New trait: '+TR[t].name+'!',null,'#ffd166',4.5);if(AC&&!muted)[523,659,784,1047,1319].forEach((f,k)=>tone(f,f,.12,'triangle',.04,k*.08))})}if(onScreen(nv))sfx('pop');h.dead=true;hud()}
+    else if(!h.stay&&h.t>=h.life)h.dead=true}
+  hatchlings=hatchlings.filter(h=>!h.dead);
+}
+function isDrop(b){return b&&b.done&&(b.type==='fire'||b.type==='store')}
+
+function blocked(x,y,hw){for(const px of[x-hw,x+hw])for(const py of[y-.3,y-.02]){if(!walkXY(Math.floor(px),Math.floor(py)))return true}return false}
+function moveA(a,dx,dy,hw){let ok=false;if(dx&&!blocked(a.x+dx,a.y,hw)){a.x+=dx;ok=true}if(dy&&!blocked(a.x,a.y+dy,hw)){a.y+=dy;ok=true}return ok}
+function followPath(a,dt,speed){
+  if(!a.path.length)return true;const n=a.path[0];if(!walkable(n)){a.path=[];return'blocked'}
+  const tx=n%W+.5,ty=(n/W|0)+.65,dx=tx-a.x,dy=ty-a.y,d=Math.hypot(dx,dy);
+  const sp=speed*(S.ground[tileOf(a)]===G_ROAD?1.6:1)*dt;
+  if(Math.abs(dx)>.02)a.face=dx>0?1:-1;
+  if(d<=sp){a.x=tx;a.y=ty;a.path.shift();return a.path.length===0}
+  a.x+=dx/d*sp;a.y+=dy/d*sp;return false;
+}
+
+// ================= harvesting =================
+function hitTile(i,who){
+  const o=S.obj[i],x=i%W,y=i/W|0,cx=x*T+8,cy=y*T+6,vis=onScreen(who);shakeT[i]=time;
+  if(o===O_TREE){
+    if(vis){burst(cx,cy-4,4,['#6a9a3a','#a5c95a','#4fa38a']);sfx('chop')}
+    S.hp[i]=Math.max(0,S.hp[i]-1);
+    if(S.hp[i]===0){S.obj[i]=O_STUMP;S.was[i]=1;if(vis){burst(cx,cy-8,16,['#6a9a3a','#a5c95a','#3f6b2a','#8fd6b8']);sfx('fall')}if(has(who,'algae')&&rnd()<.05*(has(who,'mimic')?1.5:1)){if(vis)sfx('ore');return{wood:3,coal:1}}return{wood:3}}
+  }else if(o===O_ROCK){
+    if(vis){burst(cx,cy+2,4,['#f2a7b5','#ffffff','#e8dcc0']);sfx('mine')}
+    S.hp[i]=Math.max(0,S.hp[i]-1);
+    if(S.hp[i]===0){S.obj[i]=O_RUBBLE;S.timer[i]=40;S.was[i]=2;if(vis)burst(cx,cy+2,12,['#f2a7b5','#ffffff','#c9707f'])}
+    if(S.hp[i]%3===0){const y={stone:2};if(rnd()<oreChance(who)){const k=rnd()<.5?'copper':'coal';y[k]=1;
+      burst(cx,cy,10,k==='copper'?['#ffffff','#d8d8e8','#fff4dc']:['#8fd6b8','#ffffff','#4f9e86']);if(vis)sfx('ore')}return y}
+  }
+  return null;
+}
+
+// ================= villagers =================
+function drain(v,a){v.food=Math.max(0,v.food-a*(has(v,'thrifty')?Math.max(.4,1-.28*tp(v)):1))}
+function taskValid(v,t){
+  if(!t)return false;
+  switch(t.kind){
+    case'tree':return v.job==='chop'&&S.obj[t.i]===O_TREE;
+    case'rock':return v.job==='mine'&&S.obj[t.i]===O_ROCK;
+    case'build':return!t.b.removed&&!t.b.done;
+    case'fish':return v.job==='fish'&&walkable(t.spot)&&!v.carry;
+    case'cook':return v.job==='cook'&&!t.b.removed;
+    case'polish':return v.job==='cook'&&!t.b.removed;
+  }return false;
+}
+function claimed(v,key){const s=new Set();for(const o of folk)if(o!==v&&o.task&&o.task[key]!==undefined)s.add(o.task[key]);return s}
+function setTask(v,r){v.task=r.target;v.path=r.path;v.state='go';v.restT=0;return true}
+function findBuild(v){
+  if(!S.buildings.some(b=>b&&!b.done))return false;
+  const cnt=new Map();for(const o of folk)if(o!==v&&o.task&&o.task.kind==='build')cnt.set(o.task.b,(cnt.get(o.task.b)||0)+1);
+  const r=bfsSp(v,i=>forN8(i,n=>{const b=bAt(n);return b&&!b.done&&(cnt.get(b)||0)<3?{kind:'build',b}:null}));
+  return r?setTask(v,r):false;
+}
+function findHarvest(v,kind){
+  const c=claimed(v,'i'),name=kind===O_TREE?'tree':'rock';
+  const r=bfsSp(v,i=>forN8(i,n=>S.obj[n]===kind&&!c.has(n)?{kind:name,i:n}:null));
+  return r?setTask(v,r):false;
+}
+function findFishing(v){ // soft sand around boulders hides mussels
+  const c=claimed(v,'spot');
+  const r=bfsSp(v,i=>{if(c.has(i)||S.ground[i]!==G_SAND)return null;const x=i%W,y=i/W|0;let w=i;
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.ground[ny*W+nx]===G_WATER){w=ny*W+nx;break}}
+    return{kind:'fish',spot:i,w}});
+  return r?setTask(v,r):false;
+}
+function goPolish(v){const f=fire();const r=bfsSp(v,i=>forN8(i,n=>bAt(n)===f?{kind:'polish',b:f}:null));return r?setTask(v,r):false}
+function goCook(v){const f=fire();const r=bfsSp(v,i=>forN8(i,n=>bAt(n)===f?{kind:'cook',b:f}:null));return r?setTask(v,r):false}
+function planDeliver(v){const r=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:null));if(!r)return false;v.path=r.path;v.state='deliver';return true}
+function goEat(v){const r=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:null));if(!r)return false;v.path=r.path;v.state='toEat';return true}
+function othersSpots(v){return folk.filter(o=>o!==v).map(o=>(o.state==='rest'||o.state==='toRest')&&o.restSpot?o.restSpot:{x:o.x,y:o.y})}
+function nearestOther(v,x,y,spots=othersSpots(v)){let m=99;for(const o of spots)m=Math.min(m,Math.hypot(o.x-x,o.y-y));return m}
+function goRest(v){ // pick a resting spot near the vent that respects everyone's personal space
+  const f=fire(),cx=f.x+1,cy=f.y+1,spots=othersSpots(v),sp=personalSpace(v),shy=sp>=2.5,huddle=has(v,'social')&&colonyGen()>=3;let best=null,bs=-1e9;
+  for(let k=0;k<28;k++){const a=rnd()*6.28,d=(huddle?2.2:3)+rnd()*(huddle?2:4.5),x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(!walkXY(x,y))continue;
+    const md=nearestOther(v,x+.5,y+.65,spots),score=shy?md:md<sp?md-100:-(md-sp);if(score>bs){bs=score;best={x,y}}}
+  if(best){const t=best.y*W+best.x,r=bfs(tileOf(v),i=>i===t?1:null);if(r){v.path=r.path;v.state='toRest';v.restSpot={x:best.x+.5,y:best.y+.65};return}}
+  v.state='rest';v.restSpot={x:v.x,y:v.y};
+}
+function rescue(v){ // an octopus walled in by kelp, boulders or dens swims free to the vent
+  const ok=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:null));
+  if(ok){v.stuckT=0;return false}
+  v.stuckT=(v.stuckT||0)+1;if(v.stuckT<3)return false;v.stuckT=0;
+  const f=fire(),cx=f.x+1,cy=f.y+1;let spot=null;
+  for(let k=0;k<60&&!spot;k++){const a=rnd()*6.28,d=2+rnd()*3,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(walkXY(x,y))spot={x,y}}
+  if(!spot)return false;
+  puff(v.x*T,v.y*T-6);v.x=spot.x+.5;v.y=spot.y+.65;v.path=[];v.task=null;v.state='idle';v.think=0;puff(v.x*T,v.y*T-6);
+  addFloat(v.x*T,v.y*T-26,v.name+' swam free!',null,'#fff6c8',3);return true;
+}
+function think(v){
+  if(rescue(v))return;
+  if(!v.carry&&adult(v)){
+    if(v.rake&&v.job!=='fish'){const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===fire()?1:null));if(r){v.path=r.path;v.state='toRake';v.rakeAct='drop';return}dropRake(v)}
+    else if(!v.rake&&v.job==='fish'&&(S.rakes||0)>0&&!folk.some(o=>o!==v&&o.state==='toRake'&&o.rakeAct==='get')){const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===fire()?1:null));if(r){v.path=r.path;v.state='toRake';v.rakeAct='get';return}}}
+  if(v.carry){if(planDeliver(v))return}
+  else if(!adult(v)){if(v.food<HUNGRY_AT&&S.res.meal+S.res.fish>0&&goEat(v))return}
+  else{
+    if(v.food<HUNGRY_AT&&S.res.meal+S.res.fish>0&&goEat(v))return;
+    if(findBuild(v))return;
+    if(v.job==='chop'&&findHarvest(v,O_TREE))return;
+    if(v.job==='mine'&&findHarvest(v,O_ROCK))return;
+    if(v.job==='fish'&&findFishing(v))return;
+    if(v.job==='cook'&&S.res.fish>0&&goCook(v))return;
+    if(v.job==='cook'&&S.pearlTip&&S.res.copper>0&&goPolish(v))return; // nothing to cook? polish pearls by the vent
+    if(v.job==='explore'&&goExplore(v))return;
+  }
+  if(v.state==='idle')goRest(v);
+  else{const f=fire();if(nearestOther(v,v.x,v.y)<personalSpace(v)*.9||Math.abs(v.x-(f.x+1))+Math.abs(v.y-(f.y+1))>10||rnd()<.015)goRest(v);else if(Math.abs(v.x-f.x-1)>.3)v.face=v.x<f.x+1?1:-1}
+}
+function dropTask(v){if(v.cooking){S.res.fish++;v.cooking=false}if(v.polishing){S.res.copper++;v.polishing=false}v.task=null;v.path=[];v.state='idle';v.think=0}
+function updFolk(v,dt){
+  if(v.state==='brood')return;
+  if(v.arr){arrStep(v,dt);return}
+  if(v.state==='away'){v.awayT-=dt;if(v.awayT<=0){v.hidden=false;v.state='idle';v.think=0;v.carry=exploreLoot();S.explored=(S.explored||0)+1;
+    puff(v.x*T,v.y*T-6);addFloat(v.x*T,v.y*T-26,v.name+' is back! They '+TALES[rnd()*TALES.length|0]+'.',null,'#fff6c8',5);if(onScreen(v))sfx('pop');hud()}return}
+  v.anim+=dt;
+  if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){if(v.sex==='m'&&v.lifeLeft==null)v.lifeLeft=natLife();addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
+  drain(v,dt*(.5+.5*v.size)); // everyone gets hungry over time, even when resting
+  let work=(fading(v)?.6:1)*(hasBench()?1.5:1)*(v.food<=0?.5:1)*(has(v,'tools')?1+.2*tp(v):1);const st=v.state;
+  if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);if(k==='fish'&&v.rake)work*=1.5;if(k==='cook'&&count('grill'))work*=1.5;
+    if(has(v,'social')&&folk.some(o=>o!==v&&o.state==='work'&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<4))work*=1.2}
+  if(v.food<=0)v.xp.hungry+=dt;
+  if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
+  v.restT=0;
+  if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'||st==='toEdge'||st==='toRake'){
+    if(st==='go'&&!taskValid(v,v.task)){dropTask(v);return}
+    const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size)*(fading(v)?.7:1)*(has(v,'swift')?1+.2*tp(v):1));const mv=Math.hypot(v.x-ox,v.y-oy);drain(v,mv*.15*v.size);v.xp.swim+=mv;
+    if(st==='toDen'||st==='toMate'){const b=st==='toDen'?denOf(v):v.mateDen;
+      if(!b||b.removed){v.state='idle';v.think=.2;return}
+      if(r==='blocked'){if(!goDen(v,b)){if(st==='toDen'){v.state='brood';if(b.eggs)b.eggs.stage='brood'}else v.state='idle'}return}
+      if(r===true){if(st==='toDen'){v.state='brood';if(b.eggs)b.eggs.stage='brood'}else{v.state='idle';v.think=.5}
+        for(let k=0;k<4;k++)parts.push({x:(b.x+1)*T+(rnd()-.5)*12,y:(b.y+b.h)*T-10,vx:(rnd()-.5)*10,vy:-16-rnd()*10,g:0,life:1.4,max:1.4,heart:true});if(onScreen(v))sfx('pop')}
+      return}
+    if(r==='blocked'){if(st==='go')v.task=null;v.state='idle';v.think=.1;return}
+    if(r!==true)return;
+    if(st==='go'){v.state='work';v.hitT=0;v.fishT=0;const t=v.task;
+      const cx=t.kind==='build'||t.kind==='cook'||t.kind==='polish'?t.b.x+t.b.w/2:t.kind==='fish'?t.w%W+.5:t.i%W+.5;if(Math.abs(cx-v.x)>.1)v.face=cx>v.x?1:-1}
+    else if(st==='deliver')deposit(v);
+    else if(st==='toEdge'){v.state='away';v.awayT=EXPLORE_TIME;v.hidden=true;puff(v.x*T,v.y*T-6);if(onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' set off on an adventure!',null,'#fff6c8',3.5)}
+    else if(st==='toEat'){v.state='eat';v.hitT=0}
+    else if(st==='toRake'){
+      if(v.rakeAct==='drop'){dropRake(v);if(onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' left the rake by the vent',null,'#fff6c8',3)}
+      else if((S.rakes||0)>0&&v.job==='fish'){S.rakes--;v.rake=true;if(onScreen(v)){addFloat(v.x*T,v.y*T-26,v.name+' picked up the mussel rake',null,'#fff6c8',3);sfx('mark')}}
+      v.state='idle';v.think=0;hud()}
+    else{v.state='rest';v.think=.3}
+    return}
+  if(st==='eat'){v.hitT+=dt;if(v.hitT>=1.6){eat(v);v.state='idle';v.think=0}return}
+  if(st==='work'){
+    const t=v.task;if(!taskValid(v,t)){dropTask(v);return}
+    if(t.kind==='fish'){workFish(v,dt*work);return}
+    if(t.kind==='cook'){workCook(v,dt*work);return}
+    if(t.kind==='polish'){workPolish(v,dt*work);return}
+    const iv=t.kind==='build'?HIT:GATHER_HIT;v.hitT+=dt*work;if(v.hitT<iv)return;v.hitT-=iv;
+    if(t.kind==='build'){drain(v,.5);buildHit(t.b,v);return}
+    drain(v,.8);v.xp[t.kind==='tree'?'chop':'mine']++;const y=hitTile(t.i,v);
+    if(y){v.carry=y;v.task=null;v.state='idle';v.think=0;maybePiece(v)}
+  }
+}
+function workFish(v,dt){
+  if(!v.rake&&v.catch===0&&(S.rakes||0)>0&&!folk.some(o=>o!==v&&o.state==='toRake'&&o.rakeAct==='get')){v.task=null;v.state='idle';v.think=0;return} // a rake is waiting by the vent: go get it first
+  v.hitT+=dt;v.fishT+=dt;
+  if(v.hitT>=1.2){v.hitT=0;drain(v,.3);
+    if(onScreen(v)&&rnd()<.6)burst(v.x*T+v.face*6,v.y*T-2,3,['#d2c79a','#bfb487']);
+    if(rnd()<.22){v.catch++;v.xp.fish++;maybePiece(v);if(has(v,'mussels')&&rnd()<.06*(has(v,'mimic')?1.5:1)){v.pearls=(v.pearls||0)+1;if(onScreen(v)){sfx('ore');addFloat(v.x*T,v.y*T-34,'A pearl!','copper','#ffd38a')}}
+      if(onScreen(v)){burst(v.x*T+v.face*6,v.y*T-4,8,['#d2c79a','#8fa3c8','#3b4a6b']);sfx('splash');addFloat(v.x*T,v.y*T-26,'+1','fish')}}}
+  if(v.catch>=3||(v.fishT>30&&v.catch>0)){v.carry={fish:v.catch};if(v.pearls){v.carry.copper=v.pearls;v.pearls=0}v.catch=0;v.task=null;v.state='idle';v.think=0}
+}
+function workCook(v,dt){
+  if(!v.cooking){if(S.res.fish>0){S.res.fish--;v.cooking=true;v.hitT=0;hud()}else{v.task=null;v.state='idle';v.think=.5;return}}
+  v.hitT+=dt;drain(v,.12*dt);
+  if(rnd()<dt*3&&onScreen(v)){const hx=v.x*T+v.face*7;parts.push({x:hx,y:v.y*T-10,vx:(rnd()-.5)*4,vy:-8,g:-2,life:1,max:1,col:'#f0f0f0',smoke:true})}
+  if(v.hitT>=4){v.cooking=false;v.xp.cook++;const two=has(v,'cook')&&rnd()<.2*tp(v);S.res.meal+=two?2:1;v.life.meals=(v.life.meals||0)+(two?2:1);if(two&&onScreen(v))addFloat(v.x*T,v.y*T-34,'Two meals!','meal','#fff6c8');S.cooked=(S.cooked||0)+1;if(onScreen(v)){addFloat(v.x*T,v.y*T-26,'+1','meal');sfx('coin')}hud()}
+}
+function workPolish(v,dt){ // rub a pearl in the sand by the vent until it shines
+  if(!v.polishing){if(S.res.fish>0||S.res.copper<=0){v.task=null;v.state='idle';v.think=.2;return} // mussels to cook come first
+    S.res.copper--;v.polishing=true;v.hitT=0;hud();
+    if(!S.polishTip){S.polishTip=1;toast('With nothing to cook, '+v.name+' polishes pearls by the vent.',6000)}}
+  v.hitT+=dt;drain(v,.1*dt);
+  if(rnd()<dt*4&&onScreen(v))parts.push({x:v.x*T+v.face*9+(rnd()-.5)*4,y:v.y*T-6-rnd()*4,vx:(rnd()-.5)*6,vy:-6-rnd()*6,g:0,life:.7,max:.7,col:rnd()<.5?'#ffffff':'#e8dcff'});
+  if(v.hitT>=6){v.polishing=false;S.res.gem=(S.res.gem||0)+1;v.life.gem=(v.life.gem||0)+1;
+    if(onScreen(v)){addFloat(v.x*T,v.y*T-26,'+1 polished','gem','#f4f0ff');sfx('ore')}hud()}
+}
+function deposit(v){
+  let k=0;for(const[t,a]of Object.entries(v.carry)){S.res[t]+=a;v.life[t]=(v.life[t]||0)+a;if(onScreen(v))addFloat(v.x*T,v.y*T-24-k*9,'+'+a,t,(t==='copper'||t==='coal')?'#ffd38a':null);k++}
+  if(onScreen(v))sfx('coin');v.carry=null;v.state='idle';v.think=0;hud();
+}
+function eat(v){
+  if(S.res.meal>0){S.res.meal--;v.food=100;if(onScreen(v))addFloat(v.x*T,v.y*T-26,'Yum!','meal','#fff6c8')}
+  else if(S.res.fish>0){S.res.fish--;v.food=Math.min(100,v.food+40);if(onScreen(v))addFloat(v.x*T,v.y*T-26,'Raw...','fish','#d8ecf8')}
+  else return;
+  if(onScreen(v))sfx('eat');hud();
+}
+function buildHit(b,who){
+  b.prog=Math.min(BUILD[b.type].hits,b.prog+1);
+  if(onScreen(who)){burst((b.x+b.w/2)*T,(b.y+b.h)*T-6,4,['#d4a26a','#a8713f','#efe0bd']);sfx('build')}
+  if(b.prog>=BUILD[b.type].hits){b.done=true;sfx('done');WF.happy=2;
+    burst((b.x+b.w/2)*T,(b.y+b.h/2)*T-8,26,['#f4d35e','#ffffff','#f7a8c4','#7cc46a']);
+    addFloat((b.x+b.w/2)*T,b.y*T-14,BUILD[b.type].name+'!',null);hud()}
+}
+function assignJob(job,delta){
+  if(delta>0){
+    const cand=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)&&(job!=='explore'||has(v,'adventure'))).sort((a,b)=>skill(b,job)-skill(a,job)||(a.carry?1:0)-(b.carry?1:0));
+    if(!cand.length){sfx('no');if(job==='explore')toast('Only octopuses with the Adventurer trait can explore.');return}cand[0].job=job;cand[0].think=0;sfx('mark');
+  }else{
+    const cand=folk.filter(v=>v.job===job).sort((a,b)=>skill(a,job)-skill(b,job)||(a.carry?1:0)-(b.carry?1:0)||(a.state==='work'?1:0)-(b.state==='work'?1:0));
+    if(!cand.length)return;cand[0].job='idle';sfx('unmark');
+  }
+  hud();
+}
+
+// ================= building =================
+function addBuilding(type,x,y,done,prog){
+  const d=BUILD[type],b={type,x,y,w:d.w,h:d.h,done,prog:prog||0};S.buildings.push(b);const id=S.buildings.length;
+  for(let j=y;j<y+d.h;j++)for(let k=x;k<x+d.w;k++){const i=j*W+k;S.bmap[i]=id;S.obj[i]=O_NONE;if(S.ground[i]===G_ROAD)S.ground[i]=G_GRASS}
+  return b;
+}
+function anchor(type,wx,wy){const d=BUILD[type];return{x:Math.round(wx/T-d.w/2),y:Math.round(wy/T-d.h/2)}}
+function canPlace(type,x0,y0){
+  const d=BUILD[type];if(d.once&&count(type,false))return false;if(type==='house'&&denTooClose(x0,y0))return false;
+  const occ=new Set(folk.map(tileOf));occ.add(tileOf(WF));
+  for(let y=y0;y<y0+d.h;y++)for(let x=x0;x<x0+d.w;x++){if(!inb(x,y))return false;const i=y*W+x,o=S.obj[i];
+    if(S.ground[i]===G_WATER||S.bmap[i]||!(o===O_NONE||o===O_STUMP||o===O_RUBBLE||o===O_SAP))return false;
+    if(type==='road'){if(S.ground[i]===G_ROAD)return false}else if(occ.has(i))return false}
+  return true;
+}
+function place(type,wx,wy,quiet){
+  const d=BUILD[type],a=type==='road'?{x:Math.floor(wx/T),y:Math.floor(wy/T)}:anchor(type,wx,wy);
+  if(!canPlace(type,a.x,a.y)){if(!quiet){sfx('no');if(type==='house'&&denTooClose(a.x,a.y))toast('Octopuses need their privacy...')}return false}
+  if(!afford(d.cost)){if(!quiet){sfx('no');addFloat(wx,wy-8,'Need more!',null,'#ffb4a8')}return false}
+  pay(d.cost);
+  if(type==='road'){const i=a.y*W+a.x;S.ground[i]=G_ROAD;S.obj[i]=O_NONE;sfx('mark')}
+  else{addBuilding(type,a.x,a.y,false);sfx('place');burst((a.x+d.w/2)*T,(a.y+d.h)*T-4,10,['#d4a26a','#efe0bd']);if(BUILD[type].once){setTool('look');closeTray()}}
+  hud();return true;
+}
+function removeAt(i){
+  const b=bAt(i);
+  if(b&&b.type!=='fire'){const d=BUILD[b.type];
+    if(b.eggs){const m=folk.find(v=>v.id===b.eggs.mother);if(m){m.state='idle';m.think=0}b.eggs=null}
+    for(const v of folk)if(v.mateDen===b&&v.state==='toMate')v.state='idle';
+    if(!b.done)pay(d.cost,1);else for(const[k,v]of Object.entries(d.cost))S.res[k]+=Math.floor(v/2);
+    b.removed=true;S.buildings[S.buildings.indexOf(b)]=null;
+    for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)S.bmap[y*W+x]=0;
+    burst((b.x+b.w/2)*T,(b.y+b.h)*T-8,14,['#d4a26a','#8b8f9a','#efe0bd']);sfx('unmark');hud();return true}
+  if(S.ground[i]===G_ROAD){S.ground[i]=G_GRASS;S.res.stone++;sfx('unmark');hud();return true}
+  return false;
+}
+
+// ================= Little Wolf =================
+function updWolf(dt){
+  WF.anim+=dt;WF.happy=Math.max(0,WF.happy-dt);
+  const P=folk[0];if(!P)return;
+  const dog=S.buildings.find(b=>b&&b.type==='dog'&&b.done);
+  const pIdle=P.state==='rest'&&P.restT>8;
+  if(dog&&pIdle&&WF.state==='follow'){const t=(dog.y+1)*W+dog.x,r=bfs(tileOf(WF),i=>i===t?1:null);if(r){WF.path=r.path;WF.state='tonap'}}
+  if(WF.state!=='follow'&&!pIdle){WF.state='follow';WF.happy=1;if(onScreen(WF))sfx('bark')}
+  if(WF.state==='tonap'){const r=followPath(WF,dt,2.6);WF.moving=true;if(r===true)WF.state='sleep';else if(r==='blocked')WF.state='follow';return}
+  if(WF.state==='sleep'){WF.moving=false;return}
+  const side=WF.x<P.x?-1:1,tx=P.x+side*1.1,ty=P.y+.15,dx=tx-WF.x,dy=ty-WF.y,d=Math.hypot(dx,dy); // stay on whichever side it's already on
+  if(d>7){if(onScreen(WF))puff(WF.x*T,WF.y*T-6);WF.x=P.x-P.face*.6;WF.y=P.y;puff(WF.x*T,WF.y*T-6);return}
+  if(d>(WF.moving?.3:.9)){const sp=Math.min(5,Math.max(1.6,d*2.2))*dt;const mx=dx/d*Math.min(sp,d),my=dy/d*Math.min(sp,d); // smooth speed, and a gap before it sets off again
+    if(!moveA(WF,mx,my,.22)){WF.stuck+=dt;if(WF.stuck>1.2){WF.x=P.x;WF.y=P.y;WF.stuck=0}}else WF.stuck=0;
+    if(Math.abs(mx)>.004)WF.face=mx>0?1:-1;WF.moving=true}
+  else{WF.moving=false;if(Math.abs(P.x-WF.x)>.4)WF.face=P.x>WF.x?1:-1}
+}
+function petWolf(){WF.happy=2.2;sfx('bark');for(let k=0;k<3;k++)parts.push({x:WF.x*T+(rnd()-.5)*8,y:WF.y*T-14,vx:(rnd()-.5)*10,vy:-18-rnd()*10,g:0,life:1.2,max:1.2,heart:true})}
+
+// ================= particles / floats =================
+function burst(x,y,n,cols){for(let k=0;k<n;k++)parts.push({x,y,vx:(rnd()-.5)*70,vy:-20-rnd()*50,g:160,life:.4+rnd()*.4,max:.8,col:cols[k%cols.length]})}
+function puff(x,y){for(let k=0;k<8;k++)parts.push({x,y,vx:(rnd()-.5)*40,vy:-rnd()*30,g:-10,life:.5,max:.5,col:'#e8e8e8',sz:2})}
+function addFloat(x,y,text,icon,col,life=2.6){
+  for(let k=0;k<12&&floats.some(f=>f.life>.4&&Math.abs(f.x-x)<60&&Math.abs(f.y-y)<10);k++)y-=11;
+  floats.push({x,y,text,icon,col:col||'#ffffff',life,max:life})}
+let later=[];function after(sec,fn){later.push({t:sec,fn})}
+
+// ================= audio =================
+let AC=null,muted=false,NB=null;const lastS={};
+function ensureAudio(){try{if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();NB=AC.createBuffer(1,AC.sampleRate*.3,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=rnd()*2-1}if(AC.state==='suspended')AC.resume()}catch(e){}}
+function tone(f1,f2,dur,type,vol,delay=0){const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.02)}
+function noise(dur,freq,vol){const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain(),t=AC.currentTime;s.buffer=NB;f.type='lowpass';f.frequency.value=freq;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(f).connect(g).connect(AC.destination);s.start(t);s.stop(t+dur)}
+function sfx(n){
+  if(muted||!AC)return;const now=performance.now();if(lastS[n]&&now-lastS[n]<70)return;lastS[n]=now;
+  try{switch(n){
+    case'chop':noise(.08,900,.12);tone(170,90,.07,'square',.025);break;
+    case'mine':tone(1500,950,.07,'triangle',.06);noise(.04,3200,.04);break;
+    case'build':tone(240,170,.05,'square',.03);noise(.04,1400,.05);break;
+    case'fall':noise(.3,700,.08);tone(400,200,.2,'sine',.04);break;
+    case'coin':tone(880,1320,.08,'sine',.04);break;
+    case'ore':[988,1319,1568].forEach((f,k)=>tone(f,f,.09,'triangle',.05,k*.07));break;
+    case'splash':tone(900,700,.05,'triangle',.04);tone(1100,900,.05,'triangle',.03,.06);noise(.08,1200,.04);break;
+    case'eat':tone(300,250,.06,'square',.03);tone(330,260,.06,'square',.03,.12);break;
+    case'mark':tone(660,880,.05,'square',.025);break;
+    case'unmark':tone(500,330,.05,'square',.03);break;
+    case'place':tone(392,392,.07,'square',.04);tone(523,523,.09,'square',.04,.07);break;
+    case'done':[523,659,784,1047].forEach((f,k)=>tone(f,f,.1,'square',.035,k*.08));break;
+    case'no':tone(200,150,.12,'square',.04);break;
+    case'pop':tone(600,900,.1,'sine',.05);tone(900,1200,.1,'sine',.04,.08);break;
+    case'bark':tone(2200,1900,.03,'square',.03);tone(2400,2100,.03,'square',.03,.07);tone(2200,1900,.03,'square',.03,.14);break;
+  }}catch(e){}
+}
+
+// ================= camera / input =================
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let cam={x:0,y:0},zoom=innerWidth<700?2:3,zoomT=zoom,zAnchor={sx:0,sy:0},dpr=1,scale=3;
+const ZMIN=1,ZMAX=6;
+function computeScale(){scale=Math.max(.5,Math.round(zoom*dpr*16)/16)}
+function resize(){dpr=window.devicePixelRatio||1;cv.width=innerWidth*dpr|0;cv.height=innerHeight*dpr|0;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';computeScale();clampCam()}
+addEventListener('resize',resize);
+function viewW(){return cv.width/scale}function viewH(){return cv.height/scale}
+function clampCam(){const vw=viewW(),vh=viewH();cam.x=Math.max(-vw/2,Math.min(W*T-vw/2,cam.x));cam.y=Math.max(-vh/2,Math.min(H*T-vh/2,cam.y))}
+function toWorld(sx,sy){return{x:cam.x+sx*dpr/scale,y:cam.y+sy*dpr/scale}}
+function toTile(w){return{x:Math.floor(w.x/T),y:Math.floor(w.y/T)}}
+function applyZoom(z,sx,sy){const w=toWorld(sx,sy);zoom=z;computeScale();cam.x=w.x-sx*dpr/scale;cam.y=w.y-sy*dpr/scale;clampCam()}
+function zoomTo(z,sx=innerWidth/2,sy=innerHeight/2){zoomT=Math.max(ZMIN,Math.min(ZMAX,z));zAnchor={sx,sy}}
+function onScreen(a){if(!a)return false;const x=a.x*T,y=a.y*T;return x>cam.x-24&&x<cam.x+viewW()+24&&y>cam.y-32&&y<cam.y+viewH()+32}
+function centerOn(tx,ty){cam.x=tx*T-viewW()/2;cam.y=ty*T-viewH()/2;clampCam()}
+function centerOnFire(){const f=fire();centerOn(f.x+1,f.y+1)}
+
+const keys={};
+addEventListener('keydown',e=>{
+  ensureAudio();const k=e.key.toLowerCase();keys[k]=true;
+  if(k==='escape'){setTool('look');closeMenus()}if(k==='m')toggleMute();
+  if(k==='+'||k==='=')zoomTo(zoomT*1.2);if(k==='-')zoomTo(zoomT/1.2);
+  if(k==='1')setTool('look');if(k==='2')toggleTray();
+  if(k.startsWith('arrow'))e.preventDefault();
 });
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
 
-
-/* =====================================================================
-   THE GAME LOOP — runs 10 times per second, forever
-   ===================================================================== */
-
-if (!load()) tell("🔥 A lone figure sits in a dark cave, holding a sharp stone…");
-drawLog();
-if (state.totalMarks > 0) {
-  document.getElementById("wallHint").classList.add("hidden");
-  for (let i = 0; i < Math.min(60, state.totalMarks); i++) carveGlyph();
+const ptrs=new Map();let drag=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{
+  // some browsers refuse pointer capture for a second finger; pinch must still work
+  ensureAudio();try{cv.setPointerCapture(e.pointerId)}catch(err){}ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){cancelHold();const[a,b]=[...ptrs.values()];drag={mode:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:zoom,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};return}
+  if(ptrs.size>2)return;
+  const w=toWorld(e.clientX,e.clientY);hover=w;
+  if(e.button===1||e.button===2||tool==='look'){drag={mode:'pan',x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY};if(e.button===0&&tool==='look')startHold(w,e);return}
+  if(tool==='remove'){drag={mode:'remove',last:-1};removeDrag(w,true);return}
+  if(tool==='road'){drag={mode:'road',last:-1};roadAt(w);return}
+  drag=null;place(tool,w.x,w.y);
+});
+cv.addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const w=toWorld(e.clientX,e.clientY);hover=w;if(holdInfo&&Math.hypot(e.clientX-holdInfo.sx,e.clientY-holdInfo.sy)>8)cancelHold();if(!drag)return;
+  if(drag.mode==='pinch'&&ptrs.size===2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    cam.x-=(mx-drag.mx)*dpr/scale;cam.y-=(my-drag.my)*dpr/scale;drag.mx=mx;drag.my=my;
+    const z=Math.max(ZMIN,Math.min(ZMAX,drag.z0*d/drag.d0));zoomT=z;applyZoom(z,mx,my);return}
+  if(drag.mode==='pan'){cam.x-=(e.clientX-drag.x)*dpr/scale;cam.y-=(e.clientY-drag.y)*dpr/scale;drag.x=e.clientX;drag.y=e.clientY;clampCam();return}
+  if(drag.mode==='road')roadAt(w);
+  if(drag.mode==='remove')removeDrag(w,false);
+});
+function endPtr(e){
+  ptrs.delete(e.pointerId);cancelHold();
+  if(drag&&drag.mode==='pan'&&e.type==='pointerup'&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<6){const w=toWorld(e.clientX,e.clientY);if(Math.hypot(w.x-WF.x*T,w.y-(WF.y*T-6))<11)petWolf();else if(!tapSelect(w))select(null)}
+  if(ptrs.size===0||(drag&&drag.mode==='pinch'))drag=null;
 }
-updateScreen();
+cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
+cv.addEventListener('pointerleave',()=>{if(!drag)hover=null});
+cv.addEventListener('wheel',e=>{e.preventDefault();const dy=e.deltaMode===1?e.deltaY*16:e.deltaY;const f=Math.max(.8,Math.min(1.25,Math.exp(-dy*.0012)));zoomTo(zoomT*f,e.clientX,e.clientY)},{passive:false});
+function roadAt(w){const t=toTile(w),i=t.y*W+t.x;if(!inb(t.x,t.y)||i===drag.last)return;drag.last=i;place('road',w.x,w.y,true)}
+function removeDrag(w,first){const t=toTile(w),i=t.y*W+t.x;if(!inb(t.x,t.y)||i===drag.last)return;drag.last=i;
+  const b=bAt(i);if(b&&!first&&b.done)return; // only tap removes finished buildings
+  if(!removeAt(i)&&first)sfx('no')}
 
-let ideasAnnounced = state.totalMarks >= IDEAS_APPEAR_AT;
-let lastTick = Date.now();
+// minimap
+const mini=document.getElementById('mini'),mctx=mini.getContext('2d');mini.width=W;mini.height=H;const mimg=mctx.createImageData(W,H);
+const MCOL={water:[110,118,130],sand:[176,160,120],grass:[210,199,154],road:[170,170,160],tree:[90,150,60],rock:[233,170,180],stump:[170,180,120],build:[125,138,150],fire:[255,140,60]};
+function drawMini(){
+  if(mini.hidden)return;const d=mimg.data;
+  for(let i=0;i<N;i++){const g=S.ground[i],o=S.obj[i],b=bAt(i);let c;
+    if(b)c=b.type==='fire'?MCOL.fire:MCOL.build;else if(g===G_WATER)c=MCOL.water;else if(o===O_TREE)c=MCOL.tree;else if(o===O_ROCK)c=MCOL.rock;
+    else if(g===G_ROAD)c=MCOL.road;else if(g===G_SAND)c=MCOL.sand;else if(o===O_STUMP)c=MCOL.stump;else c=MCOL.grass;
+    d[i*4]=c[0];d[i*4+1]=c[1];d[i*4+2]=c[2];d[i*4+3]=255}
+  mctx.putImageData(mimg,0,0);mctx.fillStyle='#ffffff';for(const v of folk)mctx.fillRect(v.x|0,v.y|0,1,1);
+  mctx.strokeStyle='rgba(255,255,255,.9)';mctx.lineWidth=1;mctx.strokeRect(Math.round(cam.x/T)+.5,Math.round(cam.y/T)+.5,Math.round(viewW()/T),Math.round(viewH()/T));
+}
+mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect();centerOn((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);drawMini();
+  const mv=ev=>{centerOn((ev.clientX-r.left)/r.width*W,(ev.clientY-r.top)/r.height*H);drawMini()};mini.setPointerCapture(e.pointerId);mini.onpointermove=mv;mini.onpointerup=()=>{mini.onpointermove=null}});
 
-setInterval(() => {
-  const now = Date.now();
-  const seconds = (now - lastTick) / 1000 * GAME_SPEED;
-  lastTick = now;
-  state.time += seconds;
-
-  // Remove temporary effects that have run out
-  state.effects = state.effects.filter(e => e.until > state.time);
-
-  const newMarks = marksPerSecond() * seconds;
-  addMarks(newMarks);
-  state.ideas += ideasPerSecond() * seconds;
-
-  // People carving also shows up on the wall (a little, so it doesn't flood)
-  if (Math.random() < Math.min(0.6, newMarks / 3)) carveGlyph();
-
-  if (!ideasAnnounced && state.totalMarks >= IDEAS_APPEAR_AT) {
-    ideasAnnounced = true;
-    tell("💡 Looking at the marks, you get a strange feeling… could they <i>mean</i> something? (Ideas unlocked! Curious children and elders will help you think.)");
+// ================= UI =================
+const BUILDS=['house','store','bench','rake','grill','dog','road'];
+const bIcon={house:BSPR.house,store:BSPR.store,bench:BSPR.bench,rake:BSPR.rake,grill:BSPR.grill,dog:BSPR.dog,road:ROAD};
+const iconURL={};for(const k of RES.map(r=>r[0]))iconURL[k]=ICON[k].toDataURL();
+function costHTML(c){return Object.entries(c).map(([k,v])=>`${v}<img src="${iconURL[k]}" alt="${k}">`).join(' ')}
+const bar=document.getElementById('bar'),tray=document.getElementById('tray');
+const buildIconURL=BSPR.house.toDataURL();
+bar.innerHTML=`<button class="tool" data-t="build" title="Build (2)"><img id="buildImg" src="${buildIconURL}" alt=""><span>Build</span></button>`+
+  `<button class="tool" data-t="res" title="See all your resources"><img src="${BSPR.store.toDataURL()}" alt=""><span>Resources</span></button>`;
+tray.innerHTML=BUILDS.map(id=>{const d=BUILD[id];return`<button class="bb" data-b="${id}" title="${d.tip}"><img src="${bIcon[id].toDataURL()}" alt=""><span>${d.name}</span><span class="cost">${costHTML(d.cost)}</span></button>`}).join('');
+bar.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b)return;ensureAudio();const t=b.dataset.t;if(t==='res'){toggleRes();return}closeRes();if(t==='build')toggleTray();else{setTool(t);closeTray()}});
+tray.addEventListener('click',e=>{const b=e.target.closest('.bb');if(!b||b.disabled)return;ensureAudio();if(BUILD[b.dataset.b].item){makeItem(b.dataset.b);return}setTool(b.dataset.b);hud()});
+function makeItem(id){ // tools are made on the spot and left by the vent for someone to pick up
+  const d=BUILD[id];if(!afford(d.cost)){sfx('no');toast('Not enough for a '+d.name+'.');return}
+  pay(d.cost);S.rakes=(S.rakes||0)+1;sfx('place');const f=fire();burst((f.x+.3)*T,(f.y+2)*T-4,10,['#d4a26a','#e8dcc0']);
+  addFloat((f.x+1)*T,f.y*T-14,'A mussel rake, left by the vent',null,'#fff6c8',3.5);
+  if(!folk.some(v=>v.job==='fish'))toast('Put an octopus on Mussels and they will pick up the rake.',5000);hud()}
+function dropRake(v){if(v&&v.rake){v.rake=false;S.rakes=(S.rakes||0)+1}} // whatever happens, the rake ends up back by the vent
+function toggleTray(){if(tray.hidden){closeRes();tray.hidden=false;document.body.classList.add('tray')}else closeTray();if(!tray.hidden&&sel&&sel.b)select(null);hud();syncSel();eelRender()}
+function closeTray(){tray.hidden=true;document.body.classList.remove('tray'); // closing the build section also puts the building down
+  if(BUILD[tool])tool='look';cv.style.cursor=tool==='look'?'grab':'crosshair';if(typeof btipEl!=='undefined'){btipEl.hidden=true;document.body.classList.remove('btip')}syncSel()}
+const rtray=document.getElementById('rtray');
+function renderRes(){if(rtray.hidden)return;const shown=RES.filter(([k])=>k==='wood'||k==='stone'||k==='fish'||k==='meal'||(S.res[k]||0)>0);
+  rtray.innerHTML='<div class="rh">Resources</div>'+shown.map(([k,n])=>`<img src="${iconURL[k]}" alt=""><span>${n}</span><span class="rn">${S.res[k]||0}</span>`).join('')+
+    ((S.rakes||0)+folk.filter(v=>v.rake).length?`<div class="rh" style="margin-top:4px">Tools</div><img src="${BSPR.rake.toDataURL()}" alt=""><span>Mussel rakes</span><span class="rn">${folk.filter(v=>v.rake).length} carried, ${S.rakes||0} by the vent</span>`:'')+
+    (shown.length<RES.length?'<div class="rh" style="color:var(--muted);font-size:7px">More will show up as you find them.</div>':'')}
+function toggleRes(){if(rtray.hidden){closeTray();rtray.hidden=false;document.body.classList.add('rtray');renderRes()}else closeRes();syncResBtn()}
+function closeRes(){rtray.hidden=true;document.body.classList.remove('rtray');syncResBtn()}
+function syncResBtn(){const b=bar.querySelector('.tool[data-t="res"]');if(b)b.classList.toggle('sel',!rtray.hidden)}
+function syncSel(){
+  const building=!!BUILD[tool];
+  bar.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.t==='build'?(building||!tray.hidden):b.dataset.t===tool&&tray.hidden));
+  tray.querySelectorAll('.bb').forEach(b=>b.classList.toggle('sel',b.dataset.b===tool));
+  document.getElementById('buildImg').src=building?bIcon[tool].toDataURL():buildIconURL;
+}
+function setTool(id){tool=id;syncSel();cv.style.cursor=id==='look'?'grab':'crosshair';showBTip()}
+const resEl=document.getElementById('res');
+const TOP_RES=['wood','stone','fish','meal'];
+resEl.innerHTML=RES.filter(([k])=>TOP_RES.includes(k)).map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
+const jlist=document.getElementById('jlist'),jobsBox=document.getElementById('jobs'),jtog=document.getElementById('jtog');
+function setJobsMin(m){jobsBox.classList.toggle('min',m);jtog.setAttribute('aria-expanded',!m);document.getElementById('jarr').textContent=m?'\u25b8':'\u25be';try{localStorage.setItem(KEY+'-jobsmin',m?'1':'0')}catch(e){}}
+jtog.onclick=()=>{setJobsMin(!jobsBox.classList.contains('min'));hud()};
+try{if(localStorage.getItem(KEY+'-jobsmin')==='1')setJobsMin(true)}catch(e){}
+jlist.innerHTML=JOBS.map(j=>`<div class="job" id="jrow-${j.id}"${j.id==='explore'?' hidden':''}><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer on ${j.name}">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More on ${j.name}">+</button></div>`).join('');
+jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
+// menu
+const menu=document.getElementById('menu'),menuB=document.getElementById('menuB');
+function placeMini(){ // under the menu button, or below the town panel if they would overlap
+  let top=menu.hidden?54:menu.getBoundingClientRect().bottom+8;
+  if(!mini.hidden){const tw=document.getElementById('town').getBoundingClientRect(),mw=mini.offsetWidth||160;
+    if(tw.right+8>innerWidth-8-mw&&tw.bottom+8>top)top=Math.max(top,tw.bottom+8)}
+  mini.style.top=top+'px'}
+menuB.onclick=()=>{ensureAudio();menu.hidden=!menu.hidden;menuB.setAttribute('aria-expanded',!menu.hidden);placeMini()};
+function closeMenus(){closeRes();menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini();closeTray()}
+cv.addEventListener('pointerdown',()=>{if(!menu.hidden){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini()}},true);
+document.getElementById('zin').onclick=()=>zoomTo(zoomT*1.25);
+document.getElementById('zout').onclick=()=>zoomTo(zoomT/1.25);
+mini.hidden=true; // the minimap is turned off for good
+const sndB=document.getElementById('snd');
+function toggleMute(){muted=!muted;sndB.textContent='Sound: '+(muted?'off':'on')}
+sndB.onclick=()=>{ensureAudio();toggleMute()};
+const resetB=document.getElementById('reset');let resetArm=0;
+resetB.onclick=()=>{
+  if(Date.now()-resetArm>3000){resetArm=Date.now();resetB.textContent='Tap again to erase town';setTimeout(()=>{resetB.textContent='New map'},3000);return}
+  resetArm=0;resetB.textContent='New map';newGame();if(TEST)setupTest();save();hud();closeMenus();if(!TEST)showIntro()};
+const testB=document.getElementById('testB');testB.textContent=TEST?'Back to my reef':'Test map';
+testB.onclick=()=>{location.hash=TEST?'':'test';location.reload()};
+addEventListener('hashchange',()=>location.reload());
+// ================= quests =================
+const PIECES=9,PIECE_CHANCE=.06,EXPLORE_TIME=60;
+const QUESTS=[
+  {title:'Build enough dens to protect everyone',desc:'Eels hunt grown-ups without a den.',prog:()=>{const a=folk.filter(adult),h=a.filter(v=>{const d=denOf(v);return d&&d.done}).length;return[h,a.length]},done:()=>{const a=folk.filter(adult);return a.length>0&&a.every(v=>{const d=denOf(v);return d&&d.done})}},
+  {title:'Keep going! There must be some secrets around here...',desc:'Gatherers sometimes find puzzle pieces.',prog:()=>[S.pieces||0,PIECES],done:()=>!!S.puzzleDone},
+  {title:'Raise an adventurer',desc:'The 🧭 Adventurer trait can now appear in babies, especially from parents who swim far.',prog:()=>null,done:()=>folk.some(v=>has(v,'adventure'))},
+  {title:'Send an adventurer exploring',desc:'Put an adventurer on the Explore job.',prog:()=>null,done:()=>(S.explored||0)>0}
+];
+const questEl=document.getElementById('quest');
+function renderQuest(){
+  const q=QUESTS[S.quest||0];if(!q){questEl.hidden=true;return}
+  questEl.hidden=false;const pr=q.prog();
+  questEl.innerHTML=`<div class="qt">Quest</div><div><b>${q.title}</b></div><div style="color:var(--muted)">${q.desc}</div>`+
+    (pr?`<div>${pr[0]} / ${pr[1]}${S.quest===1?' puzzle pieces':' with a den'}</div><div class="fbar"><i style="width:${pr[1]?Math.round(Math.min(1,pr[0]/pr[1])*100):0}%"></i></div>`:'')+
+    (S.quest===1&&(S.pieces||0)>=PIECES?`<button class="mb" id="puzGo">Assemble the puzzle</button>`:'');
+  const g=document.getElementById('puzGo');if(g)g.onclick=()=>{ensureAudio();openPuzzle()};
+}
+function checkQuest(){
+  const q=QUESTS[S.quest||0];if(!q||!q.done())return;
+  S.quest=(S.quest||0)+1;const f=fire();
+  addFloat((f.x+1)*T,f.y*T-14,'Quest complete!',null,'#ffd166',4);
+  if(AC&&!muted)[523,659,784,1047].forEach((n,k)=>tone(n,n,.14,'triangle',.045,k*.1));
+  const nx=QUESTS[S.quest];if(nx)after(2.5,()=>toast('New quest: '+nx.title,4500));else after(2.5,()=>toast('All quests done for now!',4000));
+}
+function ageMales(){ // males fade after fathering (or after a long life); the last grown male waits for a grown son
+  for(const v of[...folk]){if(v.sex!=='m'||v.lifeLeft==null||breeding(v)||v.state==='away'||v.eel)continue;
+    const wasFading=fading(v);v.lifeLeft=Math.max(0,v.lifeLeft-1);
+    if(!wasFading&&fading(v)&&onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' is growing tired...',null,'#d8e0e8',3.5);
+    if(v.lifeLeft>0)continue;
+    if(!folk.some(o=>o!==v&&o.sex==='m'&&adult(o))){if(!v.waitNote){v.waitNote=1;toast(v.name+' is the last grown male. He will hold on until a son grows up.',6000)}continue}
+    dropRake(v);if(sel&&sel.v===v)select(null);
+    puff(v.x*T,v.y*T-6);addFloat(v.x*T,v.y*T-26,v.name+' has drifted away',null,'#d8e0e8',4.5);
+    if(AC&&!muted)[659,587,523,440].forEach((f,k)=>tone(f,f,.25,'sine',.03,k*.22));
+    folk.splice(folk.indexOf(v),1);hud()}
+}
+function maybePiece(v){ // once the secret quest starts, gathering can turn up puzzle pieces
+  if((S.quest||0)!==1||(S.pieces||0)>=PIECES||rnd()>=PIECE_CHANCE)return;
+  S.pieces=(S.pieces||0)+1;v.life.pieces=(v.life.pieces||0)+1;
+  if(onScreen(v))addFloat(v.x*T,v.y*T-34,'A puzzle piece! ('+S.pieces+'/'+PIECES+')','piece','#ffd166',3.5);
+  if(AC&&!muted)[880,1175,1568].forEach((n,k)=>tone(n,n,.1,'triangle',.04,k*.07));
+  if(S.pieces>=PIECES)after(1,()=>toast('All '+PIECES+' pieces found! Assemble the puzzle from the quest panel.',5000));
+  hud();
+}
+// ----- the beach puzzle -----
+const BEACH=(()=>{const c=mk(48,48),x=c.getContext('2d');const R=(a,b,w,h,col)=>{x.fillStyle=col;x.fillRect(a,b,w,h)};
+  ['#9fd8f5','#a9ddf6','#b6e3f8','#c4e9fa','#d2eefb'].forEach((col,k)=>R(0,k*4,48,4,col));
+  R(34,4,8,8,'#ffe066');R(35,3,6,10,'#ffe066');R(33,5,10,6,'#ffe066');R(36,5,3,2,'#fff6b0');
+  R(6,6,8,2,'#ffffff');R(8,5,5,1,'#ffffff');R(22,9,7,2,'#ffffff');
+  R(0,20,48,10,'#3f93c9');R(0,20,48,1,'#7fc4ea');for(const[a,b]of[[4,23],[18,25],[30,22],[40,27],[10,28]])R(a,b,5,1,'#8fd0f0');
+  R(0,30,48,2,'#ffffff');R(0,32,48,16,'#ecd9a0');for(let k=0;k<26;k++)R((k*17)%48,33+(k*7)%15,1,1,k%2?'#d8c27f':'#f7e9bd');
+  R(7,14,2,20,'#8a5a34');R(8,14,1,20,'#a8713f');for(let k=0;k<20;k+=3)R(7,14+k,2,1,'#6b4226');
+  for(const[a,b,w]of[[1,12,7],[9,12,7],[3,10,5],[10,10,5],[5,9,6]])R(a,b,w,2,'#3f8f3a');R(2,13,3,1,'#2f6e2a');R(12,13,3,1,'#2f6e2a');R(7,13,2,2,'#7a4b2a');
+  R(30,38,7,5,'#1d2b3a');R(31,38,5,4,'#f28c4a');R(32,39,1,1,'#ffffff');R(34,39,1,1,'#ffffff');R(30,43,1,1,'#f28c4a');R(32,43,1,1,'#f28c4a');R(34,43,1,1,'#f28c4a');R(36,43,1,1,'#f28c4a');
+  R(18,40,4,3,'#f2a7b5');R(19,41,2,1,'#ffffff');R(42,42,3,2,'#e0533d');R(41,43,1,1,'#e0533d');R(45,43,1,1,'#e0533d');
+  return c})();
+const puzEl=document.getElementById('puz'),puzBox=document.getElementById('puzBox');let puzOrder=[],puzPick=-1;
+function openPuzzle(){
+  puzOrder=[...Array(9).keys()];do{for(let i=8;i>0;i--){const j=rnd()*(i+1)|0;[puzOrder[i],puzOrder[j]]=[puzOrder[j],puzOrder[i]]}}while(puzOrder.every((v,i)=>v===i));
+  puzPick=-1;puzEl.hidden=false;renderPuzzle();
+}
+function renderPuzzle(){
+  const solved=puzOrder.every((v,i)=>v===i);
+  puzBox.innerHTML=`<h2 style="font-size:10px;margin:0">${solved?'A beach!':'The puzzle pieces'}</h2>`+
+    `<div>${solved?'Somewhere far beyond the reef, the sea meets the land. Some octopuses will want to see it for themselves.':'Tap two pieces to swap them. Put the picture back together.'}</div>`+
+    `<div id="puzGrid" class="${solved?'solved':''}">${puzOrder.map((p,i)=>`<canvas width="16" height="16" data-i="${i}" class="${i===puzPick?'pick':''}"></canvas>`).join('')}</div>`+
+    (solved?`<div style="color:#2f7f8a">Adventuring unlocked! The 🧭 Adventurer trait can now appear in babies.</div><button class="mb" id="puzDone">Wonderful</button>`:`<button class="mb" id="puzLater">Later</button>`);
+  puzBox.querySelectorAll('canvas').forEach(c=>{const i=+c.dataset.i,p=puzOrder[i],x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(BEACH,(p%3)*16,(p/3|0)*16,16,16,0,0,16,16)});
+}
+puzBox.addEventListener('click',e=>{
+  const c=e.target.closest('canvas');
+  if(c&&!puzOrder.every((v,i)=>v===i)){const i=+c.dataset.i;
+    if(puzPick<0){puzPick=i;sfx('mark')}else if(puzPick===i)puzPick=-1;else{[puzOrder[i],puzOrder[puzPick]]=[puzOrder[puzPick],puzOrder[i]];puzPick=-1;sfx('build');
+      if(puzOrder.every((v,k)=>v===k)){S.puzzleDone=1;S.adventure=1;S.found=S.found||[];if(AC&&!muted)[523,659,784,1047,1319,1568].forEach((n,k)=>tone(n,n,.16,'triangle',.045,k*.11));checkQuest();hud()}}
+    renderPuzzle();return}
+  if(e.target.id==='puzLater'||e.target.id==='puzDone')puzEl.hidden=true;
+});
+// ----- exploring beyond the reef -----
+const TALES=['followed a sea turtle for miles','found a sunken boat','saw a whale sing','danced with jellyfish','got lost in a forest of giant kelp','met a very old crab','saw the sun from just below the waves','found a cave full of glowing shrimp'];
+function goExplore(v){
+  if(!has(v,'adventure'))return false;
+  const f=fire(),cx=f.x+1,cy=f.y+1;
+  for(let k=0;k<30;k++){const a=rnd()*6.28,d=14+rnd()*8,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d*.8);if(!walkXY(x,y))continue;
+    const t=y*W+x,r=bfs(tileOf(v),i=>i===t?1:null);if(r){v.path=r.path;v.state='toEdge';v.task=null;return true}}
+  return false;
+}
+function exploreLoot(){const l={};const add=(k,n)=>l[k]=(l[k]||0)+n;add(rnd()<.5?'copper':'coal',1+(rnd()*2|0));if(rnd()<.6)add('stone',2+(rnd()*4|0));if(rnd()<.4)add('fish',2+(rnd()*3|0));if(rnd()<.25)add(rnd()<.5?'copper':'coal',1);return l}
+function hud(){
+  for(const k of TOP_RES)document.getElementById('n-'+k).textContent=S.res[k]||0;placeMini();
+  renderRes();
+  const idle=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)).length,growing=folk.filter(v=>!adult(v)).length;
+  for(const j of JOBS)document.getElementById('jc-'+j.id).textContent=folk.filter(v=>v.job===j.id).length;
+  jlist.querySelectorAll('.jb').forEach(b=>{b.disabled=+b.dataset.d>0?idle===0:!folk.some(v=>v.job===b.dataset.j)});
+  const hungry=folk.filter(v=>v.food<=0).length,low=folk.filter(v=>v.food>0&&v.food<HUNGRY_AT).length;
+  const jf=document.getElementById('jfoot'),warn=hungry?`${hungry} starving!`:low&&S.res.meal+S.res.fish===0?'No food left':'';
+  jf.textContent=warn||((idle?`${idle} idle`:'Everyone is busy')+(growing?` · ${growing} growing`:''));jf.classList.toggle('bad',!!warn);
+  renderInfo();checkBreedNote();renderQuest();
+  {const jr=document.getElementById('jrow-explore');if(jr)jr.hidden=!S.adventure;const idleAdv=folk.some(v=>v.job==='idle'&&adult(v)&&!breeding(v)&&has(v,'adventure'));const pb=jlist.querySelector('.jb[data-j="explore"][data-d="1"]');if(pb)pb.disabled=!idleAdv}
+  jtog.querySelector('span').textContent=jobsBox.classList.contains('min')?('Jobs \u00b7 '+(jf.classList.contains('bad')?jf.textContent:(idle?idle+' idle':'busy'))+''):'Jobs';
+  document.getElementById('evoT').textContent='Traits \u00b7 Gen '+colonyGen();document.getElementById('evoP').hidden=true;
+  if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
+    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));if(d.item){const n=(S.rakes||0)+folk.filter(v=>v.rake).length;b.title=d.tip+(n?' (you have '+n+')':'')}b.hidden=!!(d.once&&count(id,false))}); // one-off items leave the tray once placed (they come back if removed)
+}
+// ----- info card: tap an octopus or a den -----
+let sel=null;
+const infoEl=document.getElementById('info');
+function swatch(v){return v.multi?`<span class="sw" style="background:linear-gradient(135deg,${v.col} 0 40%,${v.col2} 40% 70%,${v.col3} 70%)"></span>`:`<span class="sw" style="background:${v.col}"></span>`}
+function select(x){if(x&&!x.v&&!x.b)x=null;sel=x;if(x)S.tapped=1;renderInfo();checkBreedNote()}
+function renderInfo(){
+  if(!sel||(sel.v&&!folk.includes(sel.v))||(sel.b&&(sel.b.removed||!sel.b.done))){sel=null;infoEl.hidden=true;document.body.classList.remove('sheetOpen');return}
+  infoEl.hidden=false;const jobName=j=>({chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook',idle:'Idle'})[j]||j;
+  infoEl.classList.toggle('sheet',!!sel.v);document.body.classList.toggle('sheetOpen',!!sel.v);
+  if(sel.v){const v=sel.v,d=denOf(v),sx=v.sex==='f'?'\u2640':'\u2642',e=d&&d.eggs,L=v.life||{},x=v.xp||{};
+    let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job)+(v.rake?' \u00b7 carrying a mussel rake':'');
+    const mood=fading(v)?'Fading':v.sadUntil>time?'Sad':v.food<=0?'Starving':v.food<HUNGRY_AT?'Hungry':v.state==='rest'?'Relaxing':v.state==='work'?'Busy':v.state==='eat'?'Eating':'Swimming about';
+    const traits=(v.traits||[]).length?(v.traits.map(t=>`<span>${TR[t].icon}</span><span><b>${TR[t].name}</b><br>${TR[t].desc}</span>`).join('')):`<span></span><span>No traits yet. Babies can inherit them or discover new ones.</span>`;
+    const row=(k,n)=>n?`<span>${k}</span><span>${n}</span>`:'';
+    const stats=row('Algae gathered',L.wood)+row('Shells dug',L.stone)+row('Mussels found',L.fish)+row('Pearls found',L.copper)+row('Sea glass found',L.coal)+
+      row('Meals cooked',L.meals)+row('Pearls polished',L.gem)+row('Distance swum',x.swim>=1?Math.round(x.swim)+' tiles':0)+row('Hellos waved',x.social)+row('Eel attack',v.lost?'Lost a tentacle':0)+row('Times gone hungry',x.hungry>=1?Math.round(x.hungry)+'s':0);
+    infoEl.innerHTML=`<button id="shClose" aria-label="Close">\u00d7</button>`+
+      `<div class="sh-top"><canvas id="portrait" width="16" height="20"></canvas><div><div class="sh-name">${swatch(v)}${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span>${v.multi?'<span class="badge">\u2605 Multicolored</span>':''}</div>`+
+      `<div class="sh-sub">Generation ${v.gen||1} \u00b7 ${adult(v)?'Adult':'Young'} \u00b7 ${mood}</div><div style="margin-top:4px">${st}</div>`+
+      `<div class="fbar" style="margin-top:4px" title="Food"><i style="width:${Math.round(v.food)}%"></i></div></div></div>`+
+      `<div class="sh-h">Family</div><div class="sh-stats"><span>Parents</span><span>${v.mom||v.dad?[v.mom,v.dad].filter(Boolean).join(' & '):'Founder'}</span>`+
+      `<span>Children</span><span>${v.kids||0}</span><span>Home</span><span>${d?'Has a den':!adult(v)?'Too young':'No den yet'}</span></div>`+
+      (d?`<button class="mb" id="infoGo">Show den</button>`:'')+
+      `<div class="sh-h">Skills</div><div class="sk">${JOB_KEYS.map(j=>{const m=skill(v,j),nm={chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook'}[j];
+        return`<span${v.job===j?' style="color:#2f7f8a;font-weight:bold;text-decoration:underline"':''}>${nm}${has(v,SKILL_TRAIT[j])?' '+TR[SKILL_TRAIT[j]].icon:''}</span><span class="fbar sb"><i style="width:${Math.max(0,Math.min(100,Math.round((m-SKILL_MIN)/SKILL_GAIN*100)))}%"></i></span><span>${skillName(m)}</span>`}).join('')}</div>`+
+      `<div class="sh-sub">Trait icon: head start. Underlined: current job. Experience makes them faster.</div>`+
+      `<div class="sh-h">Traits${tp(v)>1?' · Gen '+(v.gen||1)+' power +'+Math.round((tp(v)-1)*100)+'%':''}</div><div class="sh-tr">${traits}</div>`+
+      `<div class="sh-h">Life so far</div><div class="sh-stats">${stats||'<span>Just getting started</span><span></span>'}</div>`;
+    const pc=document.getElementById('portrait').getContext('2d');pc.imageSmoothingEnabled=false;pc.drawImage(sprOf(v,(time*2|0)%2),0,0);
+    document.getElementById('shClose').onclick=()=>select(null);
+  }else if(sel.b.type!=='house'){const b=sel.b;infoEl.innerHTML=`<div class="nm">${BUILD[b.type].name}</div><div>${BTIP[b.type]||''}</div>`+(b.type==='fire'?'':'<div style="color:var(--muted)">Hold it to remove it</div>');
+  }else{const b=sel.b,o=ownerOf(b),e=b.eggs;
+    infoEl.innerHTML=`<div class="nm">${o?`<span class="sw" style="background:${o.col}"></span>${o.name}'s den`:'Empty den'}</div>`+
+      `<div>${e?(e.stage==='brood'?`Eggs hatching: ${Math.round(e.t/EGG_TIME*100)}%`:'A mother is on her way'):o?'Home sweet home':'The next octopus without a den will claim it'}</div>`+
+      (o?`<button class="mb" id="infoGo">Show ${o.name}</button>`:'');
   }
+  const g=document.getElementById('infoGo');if(g)g.onclick=()=>{if(sel.v){const d=denOf(sel.v);if(d)centerOn(d.x+1,d.y+1)}else{const o=ownerOf(sel.b);if(o)centerOn(o.x,o.y-.5)}};
+}
+function tapSelect(w){
+  let best=null,bd=11;
+  for(const v of folk){if(v.state==='brood'||v.hidden)continue;const d=Math.hypot(w.x-v.x*T,w.y-(v.y*T-9*v.size));if(d<bd){bd=d;best=v}}
+  if(best){select({v:best});sfx('mark');return true}
+  const t=toTile(w);for(const ty of[t.y,t.y+1]){if(!inb(t.x,ty))continue;const b=bAt(ty*W+t.x);if(b&&b.done){select({b});sfx('mark');return true}}
+  return false;
+}
+// ----- start a family -----
+const noteEl=document.getElementById('note'),pickEl=document.getElementById('pick'),pickBox=document.getElementById('pickBox');
+let snoozeUntil=0,pickSel={f:null,m:null,focus:null};
+function breedReady(){if(S.res.meal<BREED_MEALS)return false;const ad=folk.filter(v=>adult(v)&&!breeding(v));
+  return ad.some(v=>v.sex==='m'&&!v.fathered)&&ad.some(v=>v.sex==='f'&&denFor(v))}
+function checkBreedNote(){
+  const evo=false,br=!(sel&&sel.v)&&breedReady()&&time>snoozeUntil&&pickEl.hidden&&evoEl.hidden,show=evo||br;
+  noteEl.dataset.k=evo?'evo':'breed';
+  noteEl.querySelector('span').textContent=evo?`A new generation! You have ${S.points} evolution point${S.points>1?'s':''} to spend.`:"A den is ready and there's food to spare. Start a family?";
+  document.getElementById('noteGo').textContent=evo?'Evolve':'Choose parents';
+  noteEl.hidden=!show;document.body.classList.toggle('noted',show)}
+document.getElementById('noteLater').onclick=()=>{snoozeUntil=time+120;checkBreedNote()};
+document.getElementById('noteGo').onclick=()=>{ensureAudio();if(noteEl.dataset.k==='evo'){openEvo();return}pickSel={f:null,m:null,focus:null};pickEl.hidden=false;renderPick();checkBreedNote()};
+// ----- evolution -----
+const evoEl=document.getElementById('evo'),evoBox=document.getElementById('evoBox');
+function openEvo(){evoEl.hidden=false;renderEvo();checkBreedNote()}
+function renderEvo(){
+  const found=S.found||[];
+  evoBox.innerHTML=`<h2 style="font-size:10px;margin:0">Traits</h2><div>Generation ${colonyGen()} \u00b7 ${found.length} of ${TRAITS.length} traits discovered.</div>`+
+    `<div style="color:var(--muted)">Each octopus carries its own traits from its parents. New ones appear in babies, sparked by what the parents did in life. Focus a trait when choosing parents to pass it on. Every generation makes inherited traits 25% stronger (up to Gen 5), and babies start out a little better at every job.</div>`+
+    TRAITS.map(t=>{const f=found.includes(t.id),n=folk.filter(v=>has(v,t.id)).length;
+      return f?`<div class="trait"><b>${t.icon} ${t.name}</b><span class="pips">${n} alive</span><span class="now">${t.desc}</span></div>`
+              :`<div class="trait" style="opacity:.6"><b>???</b><span class="pips"></span><span class="now">Hint: comes from ${t.hint}</span></div>`}).join('')+
+    `<div class="mrow"><button class="mb" id="evoClose">Done</button></div>`;
+}
+evoBox.addEventListener('click',e=>{if(e.target.id==='evoClose'){evoEl.hidden=true;checkBreedNote()}});
+document.getElementById('evoB').onclick=()=>{ensureAudio();openEvo()};
+function focusHTML(){
+  if(!pickSel.f||!pickSel.m)return`<div style="color:var(--muted)">Pick both parents to choose a trait to focus on.</div>`;
+  const mt=pickSel.f.traits||[],ft=pickSel.m.traits||[],all=[...new Set([...mt,...ft])];
+  if(!all.length)return`<div style="color:var(--muted)">Neither parent has a trait yet. Their life's work may still spark one in the babies.</div>`;
+  return`<div>Focus on a trait <span style="color:var(--muted)">(optional)</span></div>`+all.map(t=>{const both=mt.includes(t)&&ft.includes(t),on=pickSel.focus===t;
+    return`<button class="prow${on?' on':''}" data-focus="${t}">${TR[t].icon} ${TR[t].name}<small>${on?Math.round(FOCUS_CHANCE*100):Math.round((both?BOTH_CHANCE:ONE_CHANCE)*100)}% per baby</small></button>`}).join('')+
+    `<div style="color:var(--muted)">A focused trait passes to each baby ${Math.round(FOCUS_CHANCE*100)}% of the time. What the parents did in life can also spark a brand-new trait.</div>`;
+}
+function renderPick(){
+  const ad=folk.filter(v=>adult(v)&&!breeding(v)),row=v=>{const dis=(v.sex==='f'&&!denFor(v))||(v.sex==='m'&&v.fathered),on=pickSel.f===v||pickSel.m===v;
+    return`<button class="prow${on?' on':''}" data-id="${v.id}"${dis?' disabled':''}>${swatch(v)}${v.name}${v.multi?' \u2605':''} ${v.sex==='f'?'\u2640':'\u2642'} ${(v.traits||[]).map(t=>TR[t].icon).join('')}<small>${dis?(v.sex==='m'?'already a father':'no free den'):v.sex==='f'?(denOf(v)?'has a den':'will take a free den'):''}</small></button>`};
+  pickBox.innerHTML=`<h2>Choose parents</h2><div>Pick one mother \u2640 and one father \u2642.</div>`+
+    `<div>Mothers</div>`+ad.filter(v=>v.sex==='f').map(row).join('')+`<div>Fathers</div>`+ad.filter(v=>v.sex==='m').map(row).join('')+
+    focusHTML()+`<div style="color:var(--muted)">\u2605 Multicolored is rare and recessive: if both parents have it, each baby has a much better chance.</div><div class="warn">The mother will guard her eggs in her den and will not survive once they hatch. This uses ${BREED_MEALS} meals.</div>`+
+    `<div class="mrow"><button class="mb" id="pickGo"${pickSel.f&&pickSel.m?'':' disabled'}>Lay eggs</button><button class="mb" id="pickNo">Cancel</button></div>`;
+}
+pickBox.addEventListener('click',e=>{
+  const fb=e.target.closest('[data-focus]');if(fb){pickSel.focus=pickSel.focus===fb.dataset.focus?null:fb.dataset.focus;sfx('mark');renderPick();return}
+  const r=e.target.closest('.prow');if(r&&!r.disabled){const v=folk.find(o=>o.id===+r.dataset.id);if(v){const k=v.sex==='f'?'f':'m';pickSel[k]=pickSel[k]===v?null:v;pickSel.focus=null;sfx('mark');renderPick()}return}
+  if(e.target.id==='pickNo'){pickEl.hidden=true;snoozeUntil=time+60;checkBreedNote()}
+  if(e.target.id==='pickGo'&&pickSel.f&&pickSel.m){startBreeding(pickSel.f,pickSel.m,pickSel.focus);pickEl.hidden=true;checkBreedNote();select({v:pickSel.f})}
+});
+const HINTS=[
+  'Tap + next to a job to put your octopuses to work. Try Algae and Shells!',
+  'Work makes octopuses hungry. Send one to gather Mussels and one to Cook so meals keep coming.',
+  'Save 20 shells and 10 algae to place a Den. Every octopus claims a den of its own. Only females lay eggs.',
+  'Tap an octopus or a den to see who lives where.',
+  'With a free den and 10 meals saved, your octopuses can start a family.',
+  'Algae and shells grow back every 5 minutes, but your octopuses will still roam far. A Clam cache saves long trips.',
+  'Build a Tool rock so everyone works faster.',
+  'Your little hermit crab would love a spare shell to nap in...',
+  'Your little reef is growing!'
+];
+const hintEl=document.getElementById('hint');hintEl.onclick=()=>hintEl.classList.add('hide');let hintShown=-1,hintT=0;
+function checkHint(){
+  const adv=[folk.some(v=>v.job!=='idle'), (S.cooked||0)>0, count('house')>0, !!S.tapped, (S.bred||0)>0, count('store',false)>0||count('bench',false)>0,
+    count('bench')>0, count('dog')>0, false][S.step];
+  if(adv&&S.step<HINTS.length-1)S.step++;
+  if(hintShown!==S.step){hintShown=S.step;hintEl.textContent=HINTS[S.step];hintEl.classList.remove('hide');hintT=0}
+  if(hintT>(S.step===HINTS.length-1?5:14))hintEl.classList.add('hide');
+}
 
-  // Random events start after your first discovery
-  if (state.discovered.length > 0) {
-    if (!currentEvent && state.time >= state.nextEventAt) startEvent();
-    if (currentEvent && state.time >= eventEndsAt) {
-      tell(`${currentEvent.title}: You hesitated, and the moment passed.`);
-      endEvent();
-    }
-    if (!crack && state.time >= state.nextCrackAt) spawnCrack();
-    if (crack && state.time >= crackGoneAt) removeCrack();
+// ================= save / load =================
+function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
+  localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,rakes:S.rakes||0,fe:S.firstEel||0,eT:{at:S.eelAt!=null?Math.max(0,S.eelAt-time):null,fa:S.firstEelAt!=null?Math.max(0,S.firstEelAt-time):null,nx:eelNext?Math.max(0,eelNext-time):null},quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,pol:S.polishTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
+  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,rk:v.rake?1:0,lf:v.lifeLeft==null?null:Math.round(v.lifeLeft),fa:v.fathered?1:0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
+  cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
+    b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0,mt:b.eggs.mt||[],ft:b.eggs.ft||[],mx:b.eggs.mx||{},fx:b.eggs.fx||{},fo:b.eggs.focus||null,mn:b.eggs.mname||null,fn:b.eggs.fname||null}:null])}))}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
+  S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,gem:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,rakes:d.rakes||0,firstEel:d.fe!=null?d.fe:(d.eel>=1&&(d.pieces||d.quest)?1:0),quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,polishTip:d.pol||0,firstBaby:d.fb||null,pearlT:d.pt||0,pearlTip:d.ptip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
+  const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(t==='rake'){S.rakes=(S.rakes||0)+1}else if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
+  if(!fire())return false;
+  folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
+  list.forEach((e,k)=>{if(Array.isArray(e))spawnFolk(k===0,e[0],e[1],{sex:sexes[k%5]});
+    else Object.assign(spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1,multi:!!e.mu,col2:e.mu?e.mu[0]:null,col3:e.mu?e.mu[1]:null,traits:e.tr||[BASE_TRAITS[rnd()*BASE_TRAITS.length|0]],xp:e.xp,life:e.li,mom:e.mo,dad:e.da,kids:e.ki}),{lost:e.lt||0,rake:!!e.rk,lifeLeft:e.lf!=null?e.lf:(e.s==='m'&&(e.z??1)>=1?natLife():null),fathered:!!e.fa,sadUntil:time+(e.sd||0)})});
+  if(!S.found.length)S.found=[...new Set(folk.flatMap(v=>v.traits))];
+  for(const[b,ow,eg]of pend){if(ow!=null&&ow>=0&&folk[ow])b.owner=folk[ow].id;
+    if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2,mm:!!eg.mm,fm:!!eg.fm,mt:eg.mt||[],ft:eg.ft||[],mx:eg.mx||{},fx:eg.fx||{},focus:eg.fo||null,mname:eg.mn||m.name,fname:eg.fn||null};m.state='brood';m.job='idle'}}
+  if(d.eT){if(d.eT.at!=null)S.eelAt=time+d.eT.at;if(d.eT.fa!=null)S.firstEelAt=time+d.eT.fa;if(d.eT.nx!=null)eelNext=time+d.eT.nx}
+  resetActors();if(d.cam){cam.x=d.cam[0];cam.y=d.cam[1];clampCam()}else centerOnFire();return true}catch(e){return false}}
+addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+addEventListener('pagehide',save);
+
+// ================= update =================
+// ----- eels! about 30s in, the ground rumbles and everyone must get a den -----
+let rumbleT=0,freezeT=0,SHX=0,SHY=0,eelShowAt=0;
+const eelEl=document.createElement('div');eelEl.id='eel';eelEl.className='panel';eelEl.hidden=true;
+eelEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;width:max-content;max-width:min(420px,calc(100% - 32px));padding:8px 10px;font-size:8px;line-height:1.8;text-align:center;border-color:#a83426;z-index:5';
+document.body.appendChild(eelEl);eelEl.style.cursor='pointer';eelEl.onclick=()=>{eelShowAt=Math.min(eelShowAt,time-8);eelRender()};
+const eelCss=document.createElement('style');eelCss.textContent='body.eel #hint,body.eel #note{display:none!important}body.tray #eel{bottom:166px!important}';document.head.appendChild(eelCss);
+function grownUps(){return folk.filter(adult).length} // babies hide in the sand, so only grown-ups need a den
+function eelRumble(){if(!AC||muted)return;try{tone(70,38,2.8,'triangle',.07);tone(48,30,2.8,'sawtooth',.03);for(let k=0;k<6;k++)after(k*.45,()=>{if(AC&&!muted)noise(.3,220,.12)})}catch(e){}}
+function eelRender(){
+  const on=S.eel===1&&time>=eelShowAt,big=on&&time<eelShowAt+7&&tray.hidden;eelEl.hidden=!on;eelEl.classList.toggle('compact',on&&!big);document.body.classList.toggle('eel',big);document.body.classList.toggle('eelc',on&&!big);
+  if(on)eelEl.innerHTML=big?`<div style="color:#a83426">Eels are lurking nearby! Build a den for everyone!</div><div>Dens: ${count('house')} / ${grownUps()}</div>`:`<div style="color:#a83426">Eels nearby!</div><div>Dens: ${count('house')} / ${grownUps()}</div>`;
+}
+function eelStep(){
+  if(S.eel===undefined)S.eel=0;
+  if(S.arriving){if(folk.some(o=>o.arr)){eelRender();return}S.arriving=false} // the eel countdown starts once everyone has found each other
+  if(S.eel===0){if(S.eelAt===undefined)S.eelAt=time+30;
+    if(time>=S.eelAt){if(count('house')>=grownUps())S.eel=2;else{S.eel=1;if(S.firstEelAt==null)S.firstEelAt=time+90;eelShowAt=time+1.6;rumbleT=3;freezeT=3.2;eelRumble();after(1.7,eelRender)}}}
+  else if(S.eel===1&&count('house')>=grownUps()){S.eel=2;sfx('done');const f=fire();addFloat((f.x+1)*T,f.y*T-14,'Everyone has a den! Eels cannot reach you inside',null,'#fff6c8',4.5)}
+  else if(S.eel===2&&count('house')<grownUps()){S.eel=1;eelShowAt=time}
+  if(!S.firstEel&&S.eel>=1&&!eels.length&&freezeT<=0){ // the first eel strikes before every den is built: when one den short, or 90s after the warning
+    const short=grownUps()-count('house'),exposed=folk.some(v=>adult(v)&&!breeding(v)&&v.state!=='away'&&!(denOf(v)&&denOf(v).done));
+    if(S.firstEelAt==null)S.firstEelAt=time+90;
+    if(exposed&&(short===1||time>=S.firstEelAt)){S.firstEel=1;eelNext=time+180+rnd()*60;eelAttack(true)}}
+  else if(S.eel>=1&&S.firstEel){if(!eelNext)eelNext=time+180;if(time>=eelNext&&!eels.length&&freezeT<=0){eelNext=time+180+rnd()*60;eelAttack()}}
+  else if(S.eel<1)eelNext=0;
+  eelRender();
+}
+// ----- building tips, privacy toast, hold-to-remove, work spacing -----
+const BTIP={rake:'A shell-toothed rake. Foragers find mussels 50% faster. You only need one.',grill:'A hot stone over the vent heat. Cooks cook 50% faster. You only need one.',house:'A shell den. Every octopus claims one to hide in, and females lay their eggs in theirs. Keep dens spaced apart.',store:'Another drop-off point, so octopuses make shorter trips with their goods.',bench:'Everyone works 50% faster. You only need one.',dog:'A roomy spare shell where your hermit crab can nap. You only need one.',road:'A pebble path. Octopuses swim faster on it. Drag to paint.',fire:'The warm vent. Goods are dropped off here and cooks bake meals on it.'};
+const btipEl=document.createElement('div');btipEl.id='btip';btipEl.className='panel';btipEl.hidden=true;
+btipEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;width:max-content;max-width:min(420px,calc(100% - 32px));padding:8px 10px;font-size:8px;line-height:1.8;text-align:center;z-index:4';
+document.body.appendChild(btipEl);
+const toastEl=document.createElement('div');toastEl.id='toast';toastEl.className='panel';toastEl.hidden=true;
+toastEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:150px;width:max-content;max-width:min(420px,calc(100% - 32px));padding:8px 10px;font-size:8px;line-height:1.8;text-align:center;z-index:7;border-color:#a83426';
+document.body.appendChild(toastEl);
+const tipCss=document.createElement('style');tipCss.textContent='body.btip #hint,body.btip #note{display:none!important}body.tray #btip{bottom:176px!important}body.tray #info:not(.sheet){display:none!important}body.tray #eel.compact{bottom:auto!important}body.eel #btip{bottom:150px!important}body.eel #toast{bottom:200px!important}body.sheetOpen #eel,body.sheetOpen #btip,body.sheetOpen #hint{display:none!important}#eel.compact{top:54px!important;bottom:auto!important;left:auto!important;right:8px!important;transform:none!important;font-size:7px!important;line-height:1.7!important;padding:5px 7px!important;max-width:150px!important;opacity:.95}body.eelc #mini{margin-top:34px}#menu:not([hidden])~#eel{display:none!important}';document.head.appendChild(tipCss);
+let toastTm=null;
+function toast(msg,ms=2600){toastEl.textContent=msg;toastEl.hidden=false;clearTimeout(toastTm);toastTm=setTimeout(()=>{toastEl.hidden=true},ms)}
+function showBTip(){const d=BUILD[tool];btipEl.hidden=!d;document.body.classList.toggle('btip',!!d);if(d)btipEl.innerHTML=`<b>${d.name}</b><br>${BTIP[tool]||''}`}
+function denTooClose(x,y){return S.buildings.some(b=>b&&b.type==='house'&&Math.max(Math.abs(b.x-x),Math.abs(b.y-y))<5)}
+function crowdedAt(v,i){const x=i%W+.5,y=(i/W|0)+.65,sp=Math.max(1.5,Math.min(2.2,personalSpace(v)));
+  for(const o of folk){if(o===v||o.state==='brood')continue;const p=o.path&&o.path.length?o.path[o.path.length-1]:null,ox=p!=null?p%W+.5:o.x,oy=p!=null?(p/W|0)+.65:o.y;if(Math.hypot(ox-x,oy-y)<sp)return true}return false}
+function bfsSp(v,goal){return bfs(tileOf(v),i=>crowdedAt(v,i)?null:goal(i))||bfs(tileOf(v),goal)}
+let holdTm=null,holdInfo=null;
+function cancelHold(){if(holdTm){clearTimeout(holdTm);holdTm=null}holdInfo=null}
+function startHold(w,e){cancelHold();const t=toTile(w);if(!inb(t.x,t.y))return;const i=t.y*W+t.x,b=bAt(i);if(!((b&&b.type!=='fire')||S.ground[i]===G_ROAD))return;
+  holdInfo={i:b?b.y*W+b.x:i,sx:e.clientX,sy:e.clientY,t0:time};
+  holdTm=setTimeout(()=>{holdTm=null;if(!holdInfo)return;const hi=holdInfo.i;holdInfo=null;drag=null;if(navigator.vibrate)navigator.vibrate(25);askRemove(hi)},600)}
+const cfmEl=document.createElement('div');cfmEl.id='cfm';cfmEl.hidden=true;
+cfmEl.style.cssText='position:fixed;inset:0;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30';
+cfmEl.innerHTML='<div class="panel" style="width:min(320px,100%);padding:12px;font-size:8px;line-height:1.8;display:flex;flex-direction:column;gap:8px"><div id="cfmT" style="font-size:10px"></div><div id="cfmD"></div><div class="mrow"><button class="mb" id="cfmYes" style="border-color:#a83426;color:#a83426">Remove</button><button class="mb" id="cfmNo">Keep it</button></div></div>';
+document.body.appendChild(cfmEl);
+let cfmI=-1;
+function closeCfm(){cfmEl.hidden=true;cfmI=-1}
+cfmEl.addEventListener('click',e=>{if(e.target===cfmEl||e.target.id==='cfmNo'){closeCfm();return}if(e.target.id==='cfmYes'){const i=cfmI;closeCfm();if(i>=0&&removeAt(i))select(null)}});
+function askRemove(i){const b=bAt(i);let name,desc;
+  if(b){const d=BUILD[b.type];name=d.name;const ref=Object.entries(d.cost).map(([k,v])=>[b.done?Math.floor(v/2):v,(RES.find(r=>r[0]===k)||[0,k])[1].toLowerCase()]).filter(p=>p[0]>0).map(p=>p[0]+' '+p[1]).join(', ');
+    desc=(b.done?'You get back about half: ':'You get back everything: ')+(ref||'nothing')+'.';
+    if(b.eggs)desc+=' The eggs inside will be lost!';else if(ownerOf(b))desc+=' '+ownerOf(b).name+' will lose her home.'}
+  else{name='Path';desc='You get back 1 shell.'}
+  cfmI=i;document.getElementById('cfmT').textContent='Remove this '+name+'?';document.getElementById('cfmD').textContent=desc;cfmEl.hidden=false}
+function drawHold(){if(!holdInfo)return;const b=bAt(holdInfo.i),p=Math.min(1,(time-holdInfo.t0)/.6),x=b?b.x*T:(holdInfo.i%W)*T,y=b?b.y*T:(holdInfo.i/W|0)*T,w=b?b.w*T:T,h=b?b.h*T:T;
+  ctx.fillStyle='rgba(224,83,61,'+(.12+.28*p)+')';ctx.fillRect(x,y,w,h);ctx.fillStyle='#e0533d';ctx.fillRect(x,y+h+2,Math.round(w*p),2)}
+// ----- eel attacks: octopuses with a den hide inside; one without a den may be caught -----
+let eels=[],eelNext=0;
+function eelAttack(first){
+  const live=folk.filter(v=>v.state!=='brood'&&!v.eel&&v.state!=='away');
+  const housed=live.filter(v=>denOf(v)&&denOf(v).done&&!breeding(v));
+  const prey=live.filter(v=>adult(v)&&!breeding(v)&&!(denOf(v)&&denOf(v).done));
+  for(const v of housed)if(onScreen(v))addFloat(v.x*T,v.y*T-26,'!',null,'#ffb4a8',1.5);
+  after(.2,()=>{for(const v of housed){if(!folk.includes(v)||v.eel||breeding(v))continue;const d=denOf(v);if(!d||!d.done)continue;dropTask(v);v.eel={ph:'go',t:2.5};if(!goDen(v,d)){v.eel.ph='hid';v.hidden=true}}});
+  const victim=folk.length>2&&prey.length?prey[rnd()*prey.length|0]:null;
+  if(victim)eels.push({first:!!first,v:victim,t:-5,x:0,y:0,started:false,trail:[],ph:'in',dir:rnd()<.5?1:-1,out:0});
+  toast(victim?'An eel is circling! Octopuses without a den are in danger!':housed.length?'An eel passed by. Everyone with a den hid safely!':'An eel passed by.');
+  rumbleT=1.6;eelRumble();if(AC&&!muted){try{tone(880,660,.18,'square',.04);tone(880,660,.18,'square',.04,.25)}catch(e){}}
+}
+function updEelHide(v,dt){
+  const e=v.eel;v.anim+=dt;
+  if(e.ph==='go'){v.anim+=dt*3;const r=followPath(v,dt,18);if(r===true||r==='blocked'){e.ph='hid';e.t=2.5;v.hidden=true;v.path=[]}return} // dash home the moment the alarm sounds
+  if(e.ph==='flee'){v.anim+=dt*3;v.face=e.dir;if(!moveA(v,e.dir*7*dt,0,.3))e.t=0;e.t-=dt;if(e.t<=0){v.eel=null;v.state='idle';v.think=0}return}
+  if(!eels.length)e.t-=dt;if(e.t<=0){v.eel=null;v.hidden=false;v.state='idle';v.think=0}
+}
+function catchVictim(e){
+  const v=e.v;e.ph='out';e.out=0;if(!folk.includes(v))return;
+  if(denOf(v)&&denOf(v).done){addFloat(v.x*T,v.y*T-26,'The eel missed '+v.name+'!',null,'#fff6c8',3.5);return}
+  rumbleT=.5;
+  if(e.first||(!v.lost&&rnd()<.5)){ // the very first eel always lets its victim escape; after that, a first catch is 50/50
+    v.lost=rnd()<.5?1:2;v.sadUntil=time+60;dropTask(v);v.eel={ph:'flee',t:1,dir:-e.dir};v.face=-e.dir;
+    burst(v.x*T,v.y*T-8,14,[v.col,shade(v.col,.75),'#ffffff']);parts.push({x:v.x*T+e.dir*4,y:v.y*T-6,vx:e.dir*26,vy:-34,g:160,life:1.3,max:1.3,col:v.col,sz:3});sfx('no');
+    addFloat(v.x*T,v.y*T-26,v.name+' lost a tentacle but got away!',null,'#ffd9a8',4.5);hud();return}
+  burst(v.x*T,v.y*T-8,18,['#e0533d','#a83426','#ffffff']);sfx('no');
+  addFloat(v.x*T,v.y*T-26,v.name+(v.lost?' was caught by the eel again!':' was caught by an eel!'),null,'#ffb4a8',4.5);
+  if(sel&&sel.v===v)select(null);
+  dropRake(v);folk.splice(folk.indexOf(v),1);hud();
+}
+function updEels(dt){
+  for(const e of eels){e.t+=dt;if(e.t<0)continue;const v=e.v;
+    if(e.ph==='in'){
+      if(!folk.includes(v)){e.ph='out';e.out=0}
+      else{if(!e.started){e.started=true;e.x=v.x*T-e.dir*110;e.y=v.y*T-6}
+        const tx=v.x*T,ty=v.y*T-6,dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy),sp=95*dt;
+        if(d<=Math.max(6,sp))catchVictim(e);else{e.x+=dx/d*sp;e.y+=dy/d*sp}}
+    }else if(e.started){e.x+=e.dir*110*dt;e.out+=dt}else e.out=99;
+    if(e.started&&(!e.trail.length||Math.hypot(e.trail[0].x-e.x,e.trail[0].y-e.y)>2.2)){e.trail.unshift({x:e.x,y:e.y});if(e.trail.length>16)e.trail.pop()}
   }
+  eels=eels.filter(e=>!(e.ph==='out'&&e.out>1.8));
+}
+function drawEels(){
+  for(const e of eels){const v=e.v;
+    if(e.t<0){if(folk.includes(v)&&((time*4)|0)%2===0){const x=Math.round(v.x*T),y=Math.round(v.y*T-30);ctx.fillStyle=INK;ctx.fillRect(x-2,y-1,4,8);ctx.fillRect(x-2,y+8,4,3);ctx.fillStyle='#e0533d';ctx.fillRect(x-1,y,2,6);ctx.fillRect(x-1,y+9,2,1)}continue}
+    if(!e.trail.length)continue;
+    ctx.globalAlpha=e.ph==='out'?Math.max(0,1-e.out/1.8):1;
+    const pts=e.trail.map((p,i)=>({x:Math.round(p.x),y:Math.round(p.y+Math.sin(time*9+i*.7)*1.5),w:i===0?5:i<10?4:3}));
+    ctx.fillStyle=INK;for(const p of pts)ctx.fillRect(p.x-2,p.y-2,p.w+2,p.w+2);
+    for(let i=pts.length-1;i>=0;i--){const p=pts[i];ctx.fillStyle=i%3===1?'#6f9a86':'#4a6b5a';ctx.fillRect(p.x-1,p.y-1,p.w,p.w)}
+    const h=pts[0];ctx.fillStyle='#ffffff';ctx.fillRect(h.x+(e.dir>0?2:-1),h.y-1,1,1);ctx.fillStyle='#e0533d';ctx.fillRect(h.x+(e.dir>0?3:-2),h.y+1,1,1);
+    ctx.globalAlpha=1}
+}
+// injured octopuses: a missing tentacle (permanent) and a sad face (one minute)
+function sprOf(v,fr){
+  const sad=v.sadUntil>time,lost=v.lost||0;
+  if(!sad&&!lost)return v.spr[fr];
+  const key=lost+(sad?'s':'n')+v.col+(v.multi?v.col2+v.col3:'');
+  if(v._ik!==key){v._ik=key;v._is=[0,1].map(f=>{const c=mk(16,20),x=c.getContext('2d');x.drawImage(v.spr[f],0,0);
+    const R=(a,b,w,h,col)=>{x.fillStyle=col;x.fillRect(a,b,w,h)};
+    if(lost===1){x.clearRect(12,17,4,1);x.clearRect(13,18,3,2);R(12,17,2,1,INK)}
+    else if(lost===2){x.clearRect(0,17,5,1);x.clearRect(0,18,5,2);R(2,17,3,1,INK)}
+    if(sad){R(4,12,1,1,INK);R(5,11,1,1,INK);R(9,12,1,1,INK);R(8,11,1,1,INK);R(5,16,1,1,shade(v.col,.5));R(8,16,1,1,shade(v.col,.5));R(4,15,1,2,'#9fd8ff')}
+    return c})}
+  return v._is[fr];
+}
+function regrow(){ // every 5 minutes, gathered algae and dug-out shell mounds come back
+  if(!S.was)return;const occ=new Set(folk.map(tileOf));occ.add(tileOf(WF));let n=0;
+  for(let i=0;i<N;i++){const w=S.was[i];if(!w)continue;const o=S.obj[i];
+    if(S.bmap[i]||S.ground[i]===G_ROAD||S.ground[i]===G_WATER){S.was[i]=0;continue}
+    if(occ.has(i)||!(o===O_NONE||o===O_STUMP||o===O_RUBBLE))continue;
+    setObj(i,w===1?O_TREE:O_ROCK);S.was[i]=0;n++;if(onScreen({x:i%W+.5,y:(i/W|0)+.5}))burst(i%W*T+8,(i/W|0)*T+6,6,w===1?['#6a9a3a','#a5c95a']:['#f2a7b5','#ffffff'])}
+  if(n){const f=fire();addFloat((f.x+1)*T,f.y*T-14,'The reef grows back',null,'#d8f5c8',3.5)}
+}
+let swapT=0,tick=0,saveT=0,smokeT=0,miniT=0,sparkT=0;
+function update(dt){
+  if(Math.abs(zoomT-zoom)>.0005&&!(drag&&drag.mode==='pinch')){const k=1-Math.pow(.00005,dt),nz=Math.abs(zoomT-zoom)<.004?zoomT:zoom+(zoomT-zoom)*k;applyZoom(nz,zAnchor.sx,zAnchor.sy)}
+  const kx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),ky=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+  if(kx||ky){const sp=700*dpr/scale*dt;cam.x+=kx*sp;cam.y+=ky*sp;clampCam()}
 
-  updateScreen();
-}, 100);
+  const g=dt*GAME_SPEED;
+  for(const b of S.buildings)if(b&&b.eggs&&b.eggs.stage==='brood'){b.eggs.t+=g;if(b.eggs.t>=EGG_TIME)hatch(b)}
+  updHatch(dt);
+  if(rumbleT>0)rumbleT-=dt;updEels(dt);
+  if(freezeT>0)freezeT-=dt;else for(const v of folk){if(v.eel&&breeding(v)){v.eel=null;v.hidden=false}if(v.eel)updEelHide(v,g);else updFolk(v,g)}
+  updWolf(g);
 
-setInterval(save, 5000);                        // auto-save every 5 seconds
-window.addEventListener("beforeunload", save);  // and when you close the tab
+
+  for(const p of parts){p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
+  parts=parts.filter(p=>p.life>0);
+  for(const f of floats){f.life-=dt;f.y-=6*dt}floats=floats.filter(f=>f.life>0);
+  for(const l of later){l.t-=dt;if(l.t<=0){l.done=true;l.fn()}}later=later.filter(l=>!l.done);
+  const ccx=(cam.x+viewW()/2)/T,ccy=(cam.y+viewH()/2)/T;
+  for(const b of flies){b.ph+=dt;b.x+=Math.cos(b.ph*.7)*dt*.9;b.y+=Math.sin(b.ph*1.3)*dt*.6;
+    if(Math.abs(b.x-ccx)>viewW()/T*.7||Math.abs(b.y-ccy)>viewH()/T*.7){b.x=ccx+(rnd()-.5)*viewW()/T;b.y=ccy+(rnd()-.5)*viewH()/T}}
+
+  smokeT+=dt;if(smokeT>.7){smokeT=0;for(const b of S.buildings)if(b&&b.done&&b.type==='house'&&onScreen({x:b.x+1,y:b.y}))
+    parts.push({x:b.x*T+15+(rnd()-.5)*8,y:(b.y+b.h)*T-30,vx:(rnd()-.5)*4,vy:-12,g:-3,life:2.2,max:2.2,col:'#dff6ff',sz:1+(rnd()<.4?1:0),bub:true})}
+  sparkT+=dt;if(sparkT>.18){sparkT=0;const f=fire();if(onScreen({x:f.x+1,y:f.y+1}))parts.push({x:f.x*T+16+(rnd()-.5)*5,y:f.y*T+8,vx:(rnd()-.5)*6,vy:-14-rnd()*10,g:-5,life:1.6,max:1.6,col:rnd()<.7?'#dff6ff':'#ffd56b',sz:rnd()<.4?2:1,bub:true});if(rnd()<.35){parts.push({x:cam.x+rnd()*viewW(),y:cam.y+viewH()*(.4+rnd()*.6),vx:(rnd()-.5)*3,vy:-8-rnd()*6,g:-2,life:3,max:3,col:'#dff6ff',sz:1,bub:true})}}
+
+  // once a second: rubble settles (nothing grows back), hints, hud
+  tick+=dt;if(tick>=1){tick-=1;
+    for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
+    S.regrowT=(S.regrowT||0)+1;if(S.regrowT>=300){S.regrowT=0;regrow()}
+    claimDens();checkHint();checkQuest();ageMales();
+    if(S.babyTip&&!S.pearlTip){S.pearlT=(S.pearlT||0)+1;if(S.pearlT>=30){S.pearlTip=1; // about 30s after the first baby: a hint that pearls can be worked on
+      const b=folk.find(v=>v.name===S.firstBaby)||folk.find(v=>!adult(v))||folk[0];
+      if(b){toast('Hmm... '+b.name+' rubbed the pearl in the sand and made it shinier! What else could we do with these?',9000);if(onScreen(b))parts.push({x:b.x*T,y:b.y*T-18*b.size,vx:0,vy:-10,g:0,life:1.6,max:1.6,col:'#ffffff',sz:2,bub:true})}}}hintT++;eelStep();hud();
+    swapT=(swapT||0)+1;if(swapT>=8){swapT=0;swapJobs()}
+    const friendly=colonyGen()>=3;for(const a of folk)for(const c of folk){if(!friendly&&!has(a,'social')&&!has(c,'social'))continue;if(a.id>=c.id||a.state==='brood'||c.state==='brood')continue;
+      if(time>a.greetT&&time>c.greetT&&Math.hypot(a.x-c.x,a.y-c.y)<1.6){a.greetT=c.greetT=time+25+rnd()*20;a.xp.social++;c.xp.social++;
+        if(onScreen(a))for(const o of[a,c])parts.push({x:o.x*T,y:o.y*T-18*o.size,vx:(rnd()-.5)*6,vy:-12,g:0,life:1.4,max:1.4,heart:true})}}}
+  miniT+=dt;if(miniT>.4){miniT=0;drawMini();if(sel&&sel.v){const pc=document.getElementById('portrait');if(pc){const c=pc.getContext('2d');c.clearRect(0,0,16,20);c.drawImage(sprOf(sel.v,(time*2|0)%2),0,0)}}}
+  saveT+=dt;if(saveT>5){saveT=0;save()}
+}
+
+// ================= render =================
+function render(){
+  ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;ctx.fillStyle='#0f2a3d';ctx.fillRect(0,0,cv.width,cv.height);
+  const s=scale;const amp=rumbleT>0?Math.min(1,rumbleT)*4*dpr:0;SHX=Math.round((rnd()-.5)*2*amp);SHY=Math.round((rnd()-.5)*2*amp);ctx.setTransform(s,0,0,s,-Math.round(cam.x*s)+SHX,-Math.round(cam.y*s)+SHY);ctx.imageSmoothingEnabled=false;
+  const vw=viewW(),vh=viewH();
+  const x0=Math.max(0,Math.floor(cam.x/T)-1),y0=Math.max(0,Math.floor(cam.y/T)-1),x1=Math.min(W-1,Math.ceil((cam.x+vw)/T)+1),y1=Math.min(H-1,Math.ceil((cam.y+vh)/T)+2);
+  const wf=(time*1.5|0)%2;
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*W+x,g=S.ground[i],px=x*T,py=y*T;
+    if(g===G_WATER){ctx.drawImage(SAND,px,py);ctx.drawImage(WATER[S.varr[i]%3],px,py)}
+    else if(g===G_SAND)ctx.drawImage(SAND,px,py);
+    else{const v=S.varr[i];ctx.drawImage(GRASS[v<12?v%4:v<14?4:5],px,py);
+      if(g===G_ROAD){ctx.drawImage(ROAD,px,py);ctx.fillStyle='#a99f78';
+        if(y===0||S.ground[i-W]!==G_ROAD)ctx.fillRect(px,py,16,1);if(y===H-1||S.ground[i+W]!==G_ROAD)ctx.fillRect(px,py+15,16,1);
+        if(x===0||S.ground[i-1]!==G_ROAD)ctx.fillRect(px,py,1,16);if(x===W-1||S.ground[i+1]!==G_ROAD)ctx.fillRect(px+15,py,1,16)}}}
+  // shimmering light on the seafloor
+  ctx.fillStyle='rgba(255,255,255,.13)';
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){if((x*7+y*13)%4)continue;const px=x*T+Math.round(Math.sin(time*.9+x*1.3+y)*4)+5,py=y*T+Math.round(Math.cos(time*.7+y*1.1)*3)+7;ctx.fillRect(px,py,5,1);ctx.fillRect(px+5,py-1,3,1)}
+  const f=fire(),glow=.07+Math.sin(time*2)*.02;ctx.fillStyle=`rgba(255,150,70,${glow})`;const fx=f.x*T+16,fy=f.y*T+16;for(const r of[40,30,20])ctx.fillRect(fx-r,fy-r*.7,r*2,r*1.4);
+  const list=[];
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*W+x;if(S.obj[i])list.push({y:y+.75,k:0,i,x,ty:y});else{const dk=decoAt(i);if(dk>=0)list.push({y:y+.6,k:5,dk,x,ty:y,i})}}
+  for(const b of S.buildings)if(b&&b.x<=x1+1&&b.x+b.w>=x0&&b.y<=y1+2&&b.y+b.h>=y0)list.push({y:b.y+b.h-.05,k:1,b});
+  for(const v of folk)if(v.state!=='brood'&&!v.hidden&&onScreen(v))list.push({y:v.y,k:2,a:v});
+  for(const h of hatchlings)list.push({y:h.y/T,k:4,h});
+  list.push({y:WF.y,k:3});
+  list.sort((a,b)=>a.y-b.y);
+  for(const d of list){if(d.k===0)drawObj(d.i,d.x,d.ty);else if(d.k===1)drawBuilding(d.b);else if(d.k===2)drawFolk(d.a);else if(d.k===4)drawHatch(d.h);else if(d.k===5){const sp=DECO[d.dk],fl=(d.i>>3)&1;ctx.fillStyle='rgba(10,40,60,.18)';ctx.fillRect(d.x*T+3,(d.ty+1)*T-3,10,2);if(fl){ctx.save();ctx.translate(d.x*T+16,0);ctx.scale(-1,1);ctx.drawImage(sp,0,(d.ty+1)*T-2-sp.height);ctx.restore()}else ctx.drawImage(sp,d.x*T,(d.ty+1)*T-2-sp.height)}else drawWolf()}
+  drawSelection();drawHold();drawEels();
+  ctx.fillStyle='rgba(30,110,170,.2)';ctx.fillRect(cam.x-2,cam.y-2,vw+4,vh+4);
+  for(const b of flies){const px=Math.round(b.x*T),py=Math.round(b.y*T-14+Math.sin(b.ph*2)*2),dir=Math.cos(b.ph*.7)>=0?1:-1,tl=(b.ph*8|0)%2;
+    ctx.fillStyle=INK;ctx.fillRect(px-2,py-1,5,4);ctx.fillStyle=b.col;ctx.fillRect(px-1,py,3,2);
+    const tx=dir>0?px-3:px+3;ctx.fillStyle=INK;ctx.fillRect(tx,py-1+tl,1,3-tl);ctx.fillStyle=b.col;ctx.fillRect(tx,py+tl*0,1,2-tl);
+    ctx.fillStyle=INK;ctx.fillRect(dir>0?px+1:px-1,py,1,1)}
+  if(hover&&BUILD[tool]){const d=BUILD[tool],a=tool==='road'?toTile(hover):anchor(tool,hover.x,hover.y),ok=canPlace(tool,a.x,a.y)&&afford(d.cost);
+    ctx.fillStyle=ok?'rgba(120,255,120,.28)':'rgba(255,90,90,.33)';ctx.fillRect(a.x*T,a.y*T,d.w*T,d.h*T);
+    if(tool!=='road'){const sp=BSPR[tool];ctx.globalAlpha=.6;ctx.drawImage(sp,a.x*T,(a.y+d.h)*T-sp.height);ctx.globalAlpha=1}}
+  else if(hover&&tool==='remove'){const t=toTile(hover);ctx.strokeStyle='rgba(255,140,120,.9)';ctx.lineWidth=1;ctx.strokeRect(t.x*T+.5,t.y*T+.5,15,15)}
+  for(const p of parts){const a=Math.min(1,p.life/p.max*1.5);
+    if(p.heart){ctx.globalAlpha=a;ctx.drawImage(MINI.heart,Math.round(p.x-3),Math.round(p.y));ctx.globalAlpha=1;continue}
+    if(p.bub){ctx.globalAlpha=a*.8;ctx.fillStyle=p.col;const bx=Math.round(p.x+Math.sin(p.life*6)*1.5),by=Math.round(p.y);if(p.sz>1){ctx.fillRect(bx,by,2,2);ctx.fillStyle='#ffffff';ctx.fillRect(bx,by,1,1)}else ctx.fillRect(bx,by,1,1);continue}
+    ctx.globalAlpha=p.smoke?a*.7:a;ctx.fillStyle=p.col;const z=p.sz||1;ctx.fillRect(Math.round(p.x),Math.round(p.y),z+(p.smoke&&p.life<1?1:0),z)}
+  ctx.globalAlpha=1;
+  ctx.font='6px "Press Start 2P", monospace';ctx.textBaseline='middle';
+  for(const fl of floats){const a=Math.min(1,fl.life/.7,(fl.max-fl.life)/.25+.2);ctx.globalAlpha=a;const tw=ctx.measureText(fl.text).width,ic=fl.icon?MINI[fl.icon]:null,tot=tw+(ic?10:0);
+    let x=Math.round(fl.x-tot/2),y=Math.round(fl.y);if(ic){ctx.drawImage(ic,x,y-3);x+=10}
+    ctx.fillStyle='#1d2b3a';ctx.fillText(fl.text,x+1,y+1);ctx.fillStyle=fl.col;ctx.fillText(fl.text,x,y)}
+  ctx.globalAlpha=1;
+}
+function drawObj(i,x,y){
+  const o=S.obj[i],px=x*T,base=(y+1)*T-2;let spr;
+  if(o===O_TREE)spr=TREES[[0,0,1,1,2,3,0,1][S.varr[i]%8]];else if(o===O_ROCK)spr=S.hp[i]>4?ROCK:ROCK_S;else if(o===O_STUMP)spr=STUMP;else if(o===O_SAP)spr=SAPLING;else spr=RUBBLE;
+  if(o===O_TREE||o===O_ROCK){ctx.fillStyle='rgba(10,40,60,.22)';ctx.fillRect(px+3,base-1,10,2);ctx.fillRect(px+5,base+1,6,1)}
+  let sx=0;const st=time-shakeT[i];if(st<.25)sx=Math.round(Math.sin(st*70)*1.5);
+  if(o===O_TREE){const h=spr.height,ph=time*1.3+(i%97)*.37;for(let yy=0;yy<h;yy+=4){const k=1-yy/h,off=Math.round(Math.sin(ph+yy*.12)*k*1.8)+sx;ctx.drawImage(spr,0,yy,16,4,px+off,base-h+yy,16,4)}return}
+  ctx.drawImage(spr,px+sx,base-spr.height);
+}
+function drawBuilding(b){
+  const spr=BSPR[b.type],px=b.x*T,py=(b.y+b.h)*T-spr.height;
+  if(b.type==='fire'){drawFire(b);return}
+  if(b.done){ctx.drawImage(spr,px,py);
+    {const ow=b.type==='house'?ownerOf(b):null;if(ow&&ow.hidden&&!b.eggs){ctx.fillStyle='#ffffff';ctx.fillRect(px+13,py+23,2,2);ctx.fillRect(px+17,py+23,2,2);ctx.fillStyle=INK;ctx.fillRect(px+14,py+24,1,1);ctx.fillRect(px+18,py+24,1,1)}}
+    if(b.type==='house'&&b.eggs&&b.eggs.stage==='brood'){const m=folk.find(v=>v.id===b.eggs.mother),bl=(time*.7%3)<.15;
+      ctx.fillStyle=m?m.col:'#f28c4a';ctx.fillRect(px+12,py+21,8,4);ctx.fillStyle='#ffffff';if(!bl){ctx.fillRect(px+13,py+21,2,2);ctx.fillRect(px+17,py+21,2,2)}
+      ctx.fillStyle=INK;if(!bl){ctx.fillRect(px+14,py+22,1,1);ctx.fillRect(px+18,py+22,1,1)}
+      ctx.fillStyle='#fff4dc';for(const[a,c]of[[13,19],[15,20],[17,19],[19,20],[14,18],[18,18]])ctx.fillRect(px+a,py+c+Math.round(Math.sin(time*2+a)*.6),1,1);
+      const pr=b.eggs.t/EGG_TIME,bx=px+4,by=py+2,bw=24;ctx.fillStyle=INK;ctx.fillRect(bx-1,by-1,bw+2,4);ctx.fillStyle='#5a3a4a';ctx.fillRect(bx,by,bw,2);ctx.fillStyle='#ff9fc0';ctx.fillRect(bx,by,Math.round(bw*pr),2)}
+    return}
+  const hits=BUILD[b.type].hits,pr=b.prog/hits;
+  ctx.fillStyle='#b5a77a';ctx.fillRect(px+1,b.y*T+1,b.w*T-2,b.h*T-2);
+  ctx.globalAlpha=.3;ctx.drawImage(spr,px,py);ctx.globalAlpha=1;
+  const hh=Math.round(spr.height*pr);if(hh>0)ctx.drawImage(spr,0,spr.height-hh,spr.width,hh,px,py+spr.height-hh,spr.width,hh);
+  const top=Math.max(py,py+spr.height-hh-3),bw=b.w*T;
+  ctx.fillStyle='#7a4b2a';ctx.fillRect(px+1,top,1,py+spr.height-top-1);ctx.fillRect(px+bw-2,top,1,py+spr.height-top-1);ctx.fillStyle='#d4a26a';ctx.fillRect(px,top,bw,1);
+  const bx=px+3,by=py-6,bl=bw-6;ctx.fillStyle='#1d2b3a';ctx.fillRect(bx-1,by-1,bl+2,4);ctx.fillStyle='#5a3a22';ctx.fillRect(bx,by,bl,2);ctx.fillStyle='#7ed957';ctx.fillRect(bx,by,Math.round(bl*pr),2);
+}
+function drawFire(b){
+  const px=b.x*T,py=b.y*T;
+  const wt=S.res.wood>=60?3:S.res.wood>=20?2:S.res.wood>0?1:0,st=S.res.stone>=40?3:S.res.stone>=12?2:S.res.stone>0?1:0;
+  for(let k=0;k<wt;k++){const xx=px+1+k*3,yy=py+22-k;ctx.fillStyle=INK;ctx.fillRect(xx-1,yy-1,4,9);ctx.fillStyle='#6a9a3a';ctx.fillRect(xx,yy,2,7);ctx.fillStyle='#a5c95a';ctx.fillRect(xx,yy,1,3);ctx.fillStyle='#d4a26a';ctx.fillRect(xx,yy+4,2,1)}
+  for(let k=0;k<st;k++){const xx=px+24+(k%2)*3,yy=py+26-k*3;ctx.fillStyle=INK;ctx.fillRect(xx-1,yy-1,6,5);ctx.fillStyle='#f2a7b5';ctx.fillRect(xx,yy,4,3);ctx.fillStyle='#ffffff';ctx.fillRect(xx,yy,2,1)}
+  if(S.res.fish>0){ctx.drawImage(MINI.fish,px+1,py+3)}if(S.res.meal>0){ctx.drawImage(MINI.meal,px+23,py+3)}
+  ctx.drawImage(BSPR.fire,px,py);
+  for(let k=0;k<Math.min(3,S.rakes||0);k++){const rx=px-8+k*2,ry=py+30-k*3; // spare mussel rakes lying by the vent
+    ctx.fillStyle=INK;ctx.fillRect(rx-1,ry-1,12,3);ctx.fillRect(rx+9,ry-3,3,7);ctx.fillStyle='#a8713f';ctx.fillRect(rx,ry,9,1);ctx.fillStyle='#e8dcc0';ctx.fillRect(rx+10,ry-2,1,5);ctx.fillStyle='#fff4dc';ctx.fillRect(rx+11,ry-2,1,1);ctx.fillRect(rx+11,ry,1,1);ctx.fillRect(rx+11,ry+2,1,1)}
+  const p=.55+Math.sin(time*2.4)*.25+Math.sin(time*5.3)*.1;
+  ctx.globalAlpha=p;ctx.fillStyle='#ff9f43';ctx.fillRect(13,0,0,0);
+  ctx.fillRect(px+13,py+8,6,1);ctx.fillStyle='#ffd56b';ctx.fillRect(px+14,py+8,4,1);
+  ctx.fillStyle='#ff7a3a';for(const[a,c,l]of[[12,13,4],[19,17,5],[14,21,3],[17,24,3]])ctx.fillRect(px+a,py+c,1,l);
+  ctx.globalAlpha=1;
+}
+let HC='#f28c4a';
+function drawFolk(v){
+  const moving=v.path.length>0,fr=moving?((v.anim*8|0)%2):((v.anim*2|0)%2),bob=moving&&fr?-1:0;HC=v.col;
+  if(v.size<1){const img=sprOf(v,fr),dw=Math.max(6,Math.round(16*v.size)),dh=Math.max(8,Math.round(20*v.size)),qx=Math.round(v.x*T-dw/2),qy=Math.round(v.y*T)-dh+bob;
+    ctx.fillStyle='rgba(10,40,60,.25)';ctx.fillRect(qx+2,qy+dh-1-bob,dw-4,2);
+    if(v.face<0){ctx.save();ctx.translate(qx+dw,qy);ctx.scale(-1,1);ctx.drawImage(img,0,0,dw,dh);ctx.restore()}else ctx.drawImage(img,qx,qy,dw,dh);return}
+  const px=Math.round(v.x*T-8),py=Math.round(v.y*T)-20+bob;
+  ctx.fillStyle='rgba(10,40,60,.25)';ctx.fillRect(px+3,py+19-bob,10,2);ctx.fillRect(px+5,py+21-bob,6,1);
+  const img=sprOf(v,fr);if(fading(v))ctx.filter='saturate(35%) brightness(92%)';
+  if(v.face<0){ctx.save();ctx.translate(px+16,py);ctx.scale(-1,1);ctx.drawImage(img,0,0);ctx.restore()}else ctx.drawImage(img,px,py);ctx.filter='none';
+  if(v.arr){const q=Math.round(Math.sin(time*3+v.id));ctx.font='6px "Press Start 2P", monospace';ctx.textBaseline='middle';ctx.fillStyle=INK;ctx.fillText('?',px+6,py-7+q);ctx.fillStyle='#ffffff';ctx.fillText('?',px+5,py-8+q)}
+  const hx=v.face>0?px+14:px+1,hy=py+16;
+  if(v.rake&&!(v.state==='work'&&v.task&&v.task.kind==='fish')){const rx=v.face>0?px+1:px+13; // carried on its back, teeth up
+    ctx.fillStyle=INK;ctx.fillRect(rx-1,py+3,3,13);ctx.fillRect(rx-3,py+1,7,4);ctx.fillStyle='#a8713f';ctx.fillRect(rx,py+5,1,10);ctx.fillStyle='#e8dcc0';ctx.fillRect(rx-2,py+2,5,1);ctx.fillStyle='#fff4dc';for(const t of[-2,0,2])ctx.fillRect(rx+t,py+3,1,1)}
+  if(v.food<15){const bx=px+3,by=py-4,bb=Math.round(Math.sin(time*4));ctx.fillStyle='#1d2b3a';ctx.fillRect(bx-1,by-1+bb,12,9);ctx.fillStyle='#ffffff';ctx.fillRect(bx,by+bb,10,7);ctx.fillRect(bx+4,by+7+bb,2,1);ctx.drawImage(MINI.meal,bx+1,by+1+bb)}
+  const t=v.task;
+  if(v.state==='work'&&t){
+    const iv=t.kind==='build'?HIT:GATHER_HIT,ph=t.kind==='fish'||t.kind==='cook'||t.kind==='polish'?0:v.hitT/iv;
+    // how far the tentacle reaches: stretch out, then tug back on the hit
+    const reach=ph<.65?.35+ph/.65*.65:1-(ph-.65)/.35*.6;
+    let tx,ty,wig=1,bend=-3;
+    if(t.kind==='tree'){tx=t.i%W*T+8;ty=(t.i/W|0)*T+4;bend=-4}
+    else if(t.kind==='rock'){tx=t.i%W*T+8;ty=(t.i/W|0)*T+10;bend=-2}
+    else if(t.kind==='build'){tx=(t.b.x+t.b.w/2)*T;ty=(t.b.y+t.b.h)*T-8;bend=-5}
+    else if(t.kind==='fish'){if(t.w!==t.spot){tx=t.w%W*T+8;ty=(t.w/W|0)*T+9;wig=1.6;bend=-4}else{tx=hx+v.face*7;ty=hy+5;wig=1.4;bend=2}}
+    else{tx=t.b.x*T+16;ty=t.b.y*T+6;bend=-4}
+    const full=t.kind==='fish'||t.kind==='cook'?1:t.kind==='polish'?.55+.15*Math.sin(time*9):reach; // polishing: a little back-and-forth rub
+    let dx=tx-hx,dy=ty-hy;const L=Math.hypot(dx,dy)||1,maxL=t.kind==='fish'?16:15,len=Math.min(L,maxL)*full;dx=dx/L*len;dy=dy/L*len;
+    const tip=drawArm(hx,hy,hx+dx,hy+dy,bend,wig,v.col);
+    if(t.kind==='polish'&&v.polishing)ctx.drawImage(MINI.gem,Math.round(tip.x)-4,Math.round(tip.y)-5);
+    if(t.kind==='cook'&&v.cooking)ctx.drawImage(MINI.fish,Math.round(tip.x)-4,Math.round(tip.y)-5);
+    if(t.kind==='fish'&&v.rake){const rx=Math.round(tip.x),ry=Math.round(tip.y);ctx.fillStyle=INK;ctx.fillRect(rx-3,ry-1,7,3);ctx.fillStyle='#e8dcc0';ctx.fillRect(rx-2,ry,5,1);ctx.fillStyle='#fff4dc';for(const t2 of[-2,0,2])ctx.fillRect(rx+t2,ry+1,1,1)}
+    if(t.kind==='fish'&&v.catch>0)ctx.drawImage(MINI.fish,v.face>0?hx-9:hx+2,hy-3);
+    return}
+  if(v.state==='eat'){ctx.drawImage(MINI.meal,v.face>0?hx-2:hx-5,hy-4+((time*4|0)%2));return}
+  if(v.carry){const k=Object.keys(v.carry)[0];const it=k==='wood'?LOG_HELD:k==='fish'?MINI.fish:MINI.stone;const x=v.face>0?hx-1:hx-(it.width-2);ctx.drawImage(it,x,hy-(k==='wood'?3:1));
+    if(v.carry.copper||v.carry.coal){ctx.drawImage(MINI[v.carry.copper?'copper':'coal'],x+(v.face>0?3:-3),hy-5)}return}
+}
+function drawHatch(h){ // a teeny hatchling
+  const a=h.stay?1:Math.max(0,Math.min(1,(h.life-h.t)/6)),x=Math.round(h.x),y=Math.round(h.y),w=(h.ph*6|0)%2;
+  ctx.globalAlpha=a;ctx.fillStyle=INK;ctx.fillRect(x-2,y-5,5,4);ctx.fillRect(x-2,y-1,1,2-w);ctx.fillRect(x,y-1,1,1+w);ctx.fillRect(x+2,y-1,1,2-w);
+  ctx.fillStyle=h.col;ctx.fillRect(x-1,y-4,3,2);if(h.multi){ctx.fillStyle=h.col2;ctx.fillRect(x-1,y-4,1,1);ctx.fillStyle=h.col3;ctx.fillRect(x+1,y-4,1,1)}ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-3,1,1);ctx.fillRect(x+1,y-3,1,1);ctx.globalAlpha=1;
+}
+function drawSelection(){ // outline the selected octopus and their den (or a den and its owner)
+  if(!sel)return;const v=sel.v||ownerOf(sel.b),b=sel.b||(sel.v&&denOf(sel.v)),blink=.6+.4*Math.sin(time*5);
+  ctx.globalAlpha=blink;ctx.strokeStyle='#ffffff';ctx.lineWidth=1;
+  if(b){ctx.strokeRect(b.x*T-1.5,b.y*T-9.5,b.w*T+3,b.h*T+11)}
+  if(v&&v.state!=='brood'){const dh=Math.round(20*v.size),x=Math.round(v.x*T),y=Math.round(v.y*T)-dh-4;ctx.fillStyle='#ffffff';ctx.fillRect(x-2,y-2,5,1);ctx.fillRect(x-1,y-1,3,1);ctx.fillRect(x,y,1,1)}
+  ctx.globalAlpha=1;ctx.font='6px "Press Start 2P", monospace';ctx.textBaseline='middle';
+  const label=(t,x,y)=>{const tw=ctx.measureText(t).width;ctx.fillStyle=INK;ctx.fillText(t,Math.round(x-tw/2)+1,y+1);ctx.fillStyle='#ffffff';ctx.fillText(t,Math.round(x-tw/2),y)};
+  if(v&&v.state!=='brood')label(v.name,v.x*T,Math.round(v.y*T)-Math.round(20*v.size)-12);
+  if(b){const o=ownerOf(b);label(b.type!=='house'?BUILD[b.type].name:o?o.name+"'s den":'Empty den',(b.x+b.w/2)*T,b.y*T-16)}
+}
+function drawArm(x0,y0,x1,y1,bend,wig,col){ // a wiggly tentacle with little suckers
+  const n=Math.max(4,Math.ceil(Math.hypot(x1-x0,y1-y0))),pts=[],light=shade(col,1.35);
+  for(let i=0;i<=n;i++){const t=i/n;pts.push({x:x0+(x1-x0)*t+Math.sin(time*7+t*7)*wig*t*.8,y:y0+(y1-y0)*t+Math.sin(t*Math.PI)*bend+Math.cos(time*6+t*5)*wig*t*.8,w:t<.6?2:1})}
+  ctx.fillStyle=INK;for(const p of pts)ctx.fillRect(Math.round(p.x)-1,Math.round(p.y)-1,p.w+2,p.w+2);
+  ctx.fillStyle=col;for(const p of pts)ctx.fillRect(Math.round(p.x),Math.round(p.y),p.w,p.w);
+  ctx.fillStyle=light;for(let i=2;i<pts.length-1;i+=3)ctx.fillRect(Math.round(pts[i].x),Math.round(pts[i].y)+pts[i].w-1,1,1);
+  const e=pts[pts.length-1];ctx.fillStyle=col;ctx.fillRect(Math.round(e.x)+(x1>x0?1:-1),Math.round(e.y)-1,1,1);
+  return e;
+}
+function drawWolf(){
+  if(!onScreen(WF))return;
+  const happy=WF.happy>0,sleep=WF.state==='sleep';
+  const img=sleep?WOLF.sleep:WF.moving?((WF.anim*9|0)%2?WOLF.walk:WOLF.a):(((WF.anim*(happy?14:5))|0)%2?WOLF.b:WOLF.a);
+  const hop=happy&&!WF.moving?-Math.round(Math.abs(Math.sin(WF.anim*9))*2):0;
+  const px=Math.round(WF.x*T-8),py=Math.round(WF.y*T)-12+hop;
+  ctx.fillStyle='rgba(10,40,60,.25)';ctx.fillRect(px+3,py+11-hop,10,2);
+  if(WF.face>0){ctx.save();ctx.translate(px+16,py);ctx.scale(-1,1);ctx.drawImage(img,0,0);ctx.restore()}else ctx.drawImage(img,px,py);
+  if(sleep){ctx.font='6px "Press Start 2P", monospace';ctx.fillStyle='#ffffff';const z=(time*.8)%1;ctx.globalAlpha=1-z;ctx.fillText('z',px+(WF.face>0?2:10),py-2-z*8);ctx.globalAlpha=1}
+}
+
+// ================= intro vignette =================
+let introOn=false;
+function showIntro(){
+  if(introOn)return;introOn=true;
+  const el=document.createElement('div');el.style.cssText='position:fixed;inset:0;z-index:60;background:#0f2a3d;cursor:pointer;touch-action:none;transition:opacity .7s';
+  const c=document.createElement('canvas');c.style.cssText='position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;display:block';
+  const box=document.createElement('div');box.className='panel';
+  box.style.cssText='position:absolute;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 28px));padding:12px 14px;font-size:9px;line-height:2;min-height:84px';
+  const tx=document.createElement('div'),hn=document.createElement('div');
+  hn.style.cssText='color:var(--muted);font-size:7px;margin-top:6px;text-align:right;opacity:0;transition:opacity .5s';hn.textContent='Tap to begin';
+  box.append(tx,hn);el.append(c,box);document.body.appendChild(el);
+  const ps=innerWidth<700?3:4,VW=Math.ceil(innerWidth/ps),VH=Math.ceil(innerHeight/ps);c.width=VW;c.height=VH;
+  const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  const r=mulberry(11),hz=Math.round(VH*.4),sc=Math.max(3,Math.min(6,Math.floor(VH*.34/20))),sx=Math.round(VW*.3),by=Math.round(VH*.7);
+  const specks=[];for(let i=0;i<140;i++)specks.push({x:r()*VW|0,y:hz+(r()*(VH-hz)|0),w:2+(r()*3|0),c:r()<.5?'#bfb487':'#e2d9b0'});
+  const far=[];for(let i=0;i<30;i++)far.push({x:r()*VW,y:hz+7+r()*9,k:-1});
+  const mid=[];for(let i=0;i<22;i++){const px=r()*VW;if(Math.abs(px-sx)<10*sc&&false)continue;mid.push({x:px,y:hz+24+r()*(by-hz-20),k:r()<.55?-1:(r()*4|0)})}
+  mid.sort((a,b)=>a.y-b.y);
+  const near=[{x:VW*.04,y:VH*.93,k:-1},{x:VW*.96,y:VH*.9,k:-1},{x:VW*.015,y:VH*.82,k:0},{x:VW*.985,y:VH*.8,k:2}];
+  const bub=[];for(let i=0;i<14;i++)bub.push({x:r()*VW,y:r()*VH,s:4+r()*8});
+  const FAR=[charSprites(octoPal(FOLK[1])),charSprites(octoPal(FOLK[2]))];
+  const f1='The perfect place for an octopus to settle, but what are ',f2='they',f3=' doing here?',all=f1+f2+f3,pauseAt=all.indexOf('settle,')+7,i1=f1.length,i2=i1+f2.length;
+  let t0=performance.now(),raf=0,gone=false;
+  const nChars=t=>{let s=Math.max(0,t-1)*26;if(s>pauseAt)s=pauseAt+Math.max(0,t-1-pauseAt/26-.9)*26;return Math.min(all.length,Math.floor(s))};
+  const html=n=>{const a=all.slice(0,n);let h=a.slice(0,i1);if(n>i1)h+='<span style="color:#a83426;text-decoration:underline">'+a.slice(i1,i2)+'</span>';if(n>i2)h+=a.slice(i2);return h};
+  const item=(o,s)=>{if(o.k<0)x.drawImage(ROCK,0,0,16,16,Math.round(o.x-8*s),Math.round(o.y-16*s),16*s,16*s);else x.drawImage(TREES[o.k],0,0,16,20,Math.round(o.x-8*s),Math.round(o.y-20*s),16*s,20*s)};
+  function draw(){
+    const t=(performance.now()-t0)/1000;
+    const g=x.createLinearGradient(0,0,0,hz);g.addColorStop(0,'#14405e');g.addColorStop(1,'#3f93ab');x.fillStyle=g;x.fillRect(0,0,VW,hz+1);
+    x.fillStyle='rgba(255,255,255,.055)';for(let k=0;k<6;k++){const a=((k*VW/5+t*3)%(VW+40))-20;x.beginPath();x.moveTo(a,0);x.lineTo(a+10,0);x.lineTo(a-26,hz+VH*.3);x.lineTo(a-44,hz+VH*.3);x.fill()}
+    x.fillStyle='#d2c79a';x.fillRect(0,hz,VW,VH-hz);
+    for(const s of specks){x.fillStyle=s.c;x.fillRect(s.x,s.y,s.w,1)}
+    for(const o of far)item(o,.5);
+    const hg=x.createLinearGradient(0,hz,0,hz+VH*.32);hg.addColorStop(0,'rgba(63,147,171,.6)');hg.addColorStop(1,'rgba(63,147,171,0)');x.fillStyle=hg;x.fillRect(0,hz,VW,VH*.32);
+    // two octopuses, far away, watching
+    [[.7,hz+10,0],[.83,hz+18,1]].forEach(([fx,fy,k])=>{const fr=((t*1.4+k)|0)%2,bob=Math.round(Math.sin(t*1.6+k*2));x.globalAlpha=.85;x.drawImage(FAR[k][fr],Math.round(VW*fx-8),Math.round(fy-20+bob));x.globalAlpha=1});
+    for(const o of mid)if(o.y<=by)item(o,1);
+    // Summer, up close
+    const fr=((t*1.5)|0)%2,bob=Math.round(Math.sin(t*2))*sc;
+    x.fillStyle='rgba(10,40,60,.28)';x.fillRect(sx-7*sc,by-1,14*sc,sc);x.fillRect(sx-5*sc,by-1+sc,10*sc,sc);
+    x.drawImage(SUMMER[fr],sx-8*sc,by-20*sc+bob,16*sc,20*sc);
+    for(const o of mid)if(o.y>by)item(o,1);
+    for(const o of near)item(o,2.5);
+    x.fillStyle='rgba(255,255,255,.7)';for(const b of bub){b.y-=b.s*.016;if(b.y<-2){b.y=VH+2;b.x=r()*VW}x.fillRect(Math.round(b.x+Math.sin(t*2+b.s)*1.5),Math.round(b.y),1,1)}
+    x.fillStyle='rgba(5,25,40,.25)';x.fillRect(0,0,VW,VH);
+    const n=nChars(t);tx.innerHTML=html(n);hn.style.opacity=n>=all.length?1:0;
+    if(!gone)raf=requestAnimationFrame(draw);
+  }
+  const finish=()=>{ensureAudio();if(performance.now()-t0<400)return;
+    if(nChars((performance.now()-t0)/1000)<all.length){const need=(1+pauseAt/26+.9+(all.length-pauseAt)/26)*1000;t0=performance.now()-need-50;return}
+    gone=true;introOn=false;el.style.opacity='0';el.style.pointerEvents='none';setTimeout(()=>{cancelAnimationFrame(raf);el.remove()},750);last=performance.now()};
+  el.addEventListener('pointerdown',finish);draw();
+}
+// ================= boot =================
+resize();
+function setupTest(){ // every octopus already has a den, and there's plenty of food to start a family right away
+  folk.forEach(v=>{v.arr=null;v.path=[];v.state='idle';v.think=rnd()});S.arriving=false;
+  const f=fire(),cx=f.x+1,cy=f.y+1,ad=folk.filter(adult);let made=0;
+  for(let r=6;r<=16&&made<ad.length;r+=2)for(let k=0;k<24&&made<ad.length;k++){const a=k/24*6.283+r,x=Math.round(cx+Math.cos(a)*r)-1,y=Math.round(cy+Math.sin(a)*r*.8)-1;
+    let ok=true;for(let yy=y;yy<y+2;yy++)for(let xx=x;xx<x+2;xx++){if(!inb(xx,yy)||S.ground[yy*W+xx]===G_WATER||S.bmap[yy*W+xx])ok=false}
+    if(!ok||denTooClose(x,y))continue;for(let yy=y;yy<y+2;yy++)for(let xx=x;xx<x+2;xx++)S.obj[yy*W+xx]=O_NONE;
+    if(!canPlace('house',x,y))continue;addBuilding('house',x,y,true);made++}
+  claimDens();
+  Object.assign(S.res,{wood:60,stone:60,meal:40,fish:10});S.step=4;S.eel=2;S.eelAt=0;
+  for(const v of folk)if(onScreen(v))addFloat(v.x*T,v.y*T-26,v.name,null,'#fff6c8',2);
+  setTimeout(()=>toast('Test map: everyone has a den and there is food to start a family.',6000),400);
+}
+let fresh=false;
+if(TEST){newGame();setupTest()}else if(!load()){newGame();fresh=true}
+setTool('look');hud();checkHint();drawMini();
+let last=performance.now();
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;if(!introOn)update(dt);render();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+if(fresh)showIntro();
 </script>
-</body>
-</html>
+
+</body></html>
