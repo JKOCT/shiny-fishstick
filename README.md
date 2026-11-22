@@ -11,4 +11,4 @@ Open `index.html` in a browser. No build step.
 - **Look around:** drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap. Zoom with wheel, pinch or +/-
 - **Pet Little Wolf:** tap them with Look
 
-Each House brings 2 more villagers. Progress saves automatically in your browser.
+Progress saves automatically in your browser.

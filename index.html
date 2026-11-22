@@ -305,7 +305,7 @@ const GAME_SPEED=0.5; // villagers, Little Wolf and arrivals run at half speed f
 
 const BUILD={
   fire:{name:'Campfire',w:2,h:2,cost:{},hits:1},
-  house:{name:'House',w:2,h:2,cost:{wood:12},hits:16,tip:'Room for 2 more villagers'},
+  house:{name:'House',w:2,h:2,cost:{wood:12},hits:16,tip:'A cozy home'},
   store:{name:'Storehouse',w:2,h:2,cost:{wood:20,stone:10},hits:20,tip:'Another drop-off point, so fewer long walks'},
   bench:{name:'Workbench',w:1,h:1,cost:{wood:10,stone:6},hits:10,once:true,tip:'Sharper tools: everyone works 50% faster'},
   dog:{name:'Doghouse',w:1,h:1,cost:{wood:6},hits:6,once:true,tip:'A cozy nap spot for Little Wolf'},
@@ -746,7 +746,7 @@ resetB.onclick=()=>{
   resetArm=0;resetB.textContent='New map';newGame();save();hud();document.getElementById('help').classList.remove('show')};
 function hud(){
   for(const[k]of RES)document.getElementById('n-'+k).textContent=S.res[k];
-  document.getElementById('n-folk').textContent=folk.length+'/'+popCap();
+  document.getElementById('n-folk').textContent=folk.length;
   const idle=folk.filter(v=>v.job==='idle').length;
   document.getElementById('idle').textContent='Idle '+idle;
   for(const j of JOBS)document.getElementById('jc-'+j.id).textContent=folk.filter(v=>v.job===j.id).length;
@@ -759,7 +759,7 @@ function hud(){
 const HINTS=[
   'Tap + next to a job to put villagers to work. Try Chop and Mine!',
   'Work and walking make villagers hungry. Assign a Fisher and a Cook to keep meals coming.',
-  'Save 12 wood and place a House. Each House brings 2 more villagers.',
+  'Save 12 wood and place a House. Your villagers will build it.',
   "Trees and rocks don't grow back, so villagers will roam further. A Storehouse saves long walks.",
   'Build a Workbench so everyone works faster.',
   'Little Wolf would love a Doghouse to nap in...',
@@ -799,7 +799,6 @@ function update(dt){
   for(const v of folk)updFolk(v,g);
   updWolf(g);
 
-  if(folk.length<popCap()){spawnT+=g;if(spawnT>12){spawnT=0;const v=spawnFolk(false);addFloat(v.x*T,v.y*T-26,'Hello!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}else spawnT=0;
 
   for(const p of parts){p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
   parts=parts.filter(p=>p.life>0);
