@@ -460,7 +460,7 @@ const BUILD={
   house:{name:'Den',w:2,h:2,cost:{stone:20,wood:10},hits:36,tip:'A cozy den built from shells. Each female claims one and lays her eggs there'},
   store:{name:'Clam cache',w:2,h:2,cost:{wood:20,stone:10},hits:20,tip:'Another drop-off point, so fewer long trips'},
   bench:{name:'Tool rock',w:1,h:1,cost:{wood:10,stone:6},hits:10,once:true,tip:'Sharper tools: everyone works 50% faster'},
-  rake:{name:'Mussel rake',w:1,h:1,cost:{wood:30,stone:30},hits:12,once:true,tip:'Foragers find mussels 50% faster'},
+  rake:{name:'Mussel rake',w:1,h:1,cost:{wood:30,stone:30},hits:12,item:true,tip:'A tool. A forager carrying it finds mussels 50% faster'},
   grill:{name:'Hot stone',w:1,h:1,cost:{wood:30,stone:30},hits:12,once:true,tip:'Cooks cook 50% faster'},
   dog:{name:'Crab shell',w:1,h:1,cost:{wood:6},hits:6,once:true,tip:'A roomy spare shell for your hermit crab to nap in'},
   road:{name:'Path',w:1,h:1,cost:{stone:1},tip:'A pebble path. Octopuses move faster on it. Drag to paint'}
@@ -624,7 +624,7 @@ function startBreeding(f,m,focus){
   S.res.meal-=BREED_MEALS;b.owner=f.id;b.eggs={mother:f.id,fcol:m.col,fname:m.name,mname:f.name,fid:m.id,mm:!!f.multi,fm:!!m.multi,t:0,stage:'wait',gen:Math.max(f.gen||1,m.gen||1)+1,
     mt:[...f.traits],ft:[...m.traits],mx:{...f.xp},fx:{...m.xp},focus:focus||null};S.bred=(S.bred||0)+1;
   for(const v of[f,m]){if(v.carry){for(const[k,a]of Object.entries(v.carry))S.res[k]+=a;v.carry=null}if(v.cooking){S.res.fish++;v.cooking=false}v.task=null}
-  f.job='idle';f.state='toDen';if(!goDen(f,b)){f.state='brood';b.eggs.stage='brood'}
+  dropRake(f);f.job='idle';f.state='toDen';if(!goDen(f,b)){f.state='brood';b.eggs.stage='brood'}
   m.state='toMate';m.mateDen=b;if(!goDen(m,b))m.state='idle';
   sfx('place');hud();return true;
 }
@@ -640,7 +640,7 @@ function hatch(b){
   const lastFemale=!folk.some(v=>v!==mom&&v.sex==='f');
   hatchlings.filter(h=>h.t===0&&h.stay&&!h.sex).forEach((h,k)=>{h.sex=lastFemale&&k===0?'f':(rnd()<.5?'f':'m')});
   {const dad=folk.find(v=>v.id===e.fid);if(dad)dad.kids=(dad.kids||0)+stay}
-  if(mom){folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
+  if(mom){dropRake(mom);folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
   addFloat(ex,ey-26,n+' little ones hatched!',null,'#fff6c8',3.5);
   after(3.2,()=>addFloat(ex,ey-26,mname+' rests now',null,'#ffd9e6',4));
   after(6.5,()=>addFloat(ex,ey-26,stay+' of them will stay',null,'#fff6c8',3.5));
@@ -748,6 +748,9 @@ function rescue(v){ // an octopus walled in by kelp, boulders or dens swims free
 }
 function think(v){
   if(rescue(v))return;
+  if(!v.carry&&adult(v)){
+    if(v.rake&&v.job!=='fish'){const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===fire()?1:null));if(r){v.path=r.path;v.state='toRake';v.rakeAct='drop';return}dropRake(v)}
+    else if(!v.rake&&v.job==='fish'&&(S.rakes||0)>0&&!folk.some(o=>o!==v&&o.state==='toRake'&&o.rakeAct==='get')){const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===fire()?1:null));if(r){v.path=r.path;v.state='toRake';v.rakeAct='get';return}}}
   if(v.carry){if(planDeliver(v))return}
   else if(!adult(v)){if(v.food<HUNGRY_AT&&S.res.meal+S.res.fish>0&&goEat(v))return}
   else{
@@ -773,12 +776,12 @@ function updFolk(v,dt){
   if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
   drain(v,dt*(.5+.5*v.size)); // everyone gets hungry over time, even when resting
   let work=(hasBench()?1.5:1)*(v.food<=0?.5:1)*(has(v,'tools')?1+.2*tp(v):1);const st=v.state;
-  if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);if(k==='fish'&&count('rake'))work*=1.5;if(k==='cook'&&count('grill'))work*=1.5;
+  if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);if(k==='fish'&&v.rake)work*=1.5;if(k==='cook'&&count('grill'))work*=1.5;
     if(has(v,'social')&&folk.some(o=>o!==v&&o.state==='work'&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<4))work*=1.2}
   if(v.food<=0)v.xp.hungry+=dt;
   if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
   v.restT=0;
-  if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'||st==='toEdge'){
+  if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'||st==='toEdge'||st==='toRake'){
     if(st==='go'&&!taskValid(v,v.task)){dropTask(v);return}
     const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size)*(has(v,'swift')?1+.2*tp(v):1));const mv=Math.hypot(v.x-ox,v.y-oy);drain(v,mv*.15*v.size);v.xp.swim+=mv;
     if(st==='toDen'||st==='toMate'){const b=st==='toDen'?denOf(v):v.mateDen;
@@ -794,6 +797,10 @@ function updFolk(v,dt){
     else if(st==='deliver')deposit(v);
     else if(st==='toEdge'){v.state='away';v.awayT=EXPLORE_TIME;v.hidden=true;puff(v.x*T,v.y*T-6);if(onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' set off on an adventure!',null,'#fff6c8',3.5)}
     else if(st==='toEat'){v.state='eat';v.hitT=0}
+    else if(st==='toRake'){
+      if(v.rakeAct==='drop'){dropRake(v);if(onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' left the rake by the vent',null,'#fff6c8',3)}
+      else if((S.rakes||0)>0&&v.job==='fish'){S.rakes--;v.rake=true;if(onScreen(v)){addFloat(v.x*T,v.y*T-26,v.name+' picked up the mussel rake',null,'#fff6c8',3);sfx('mark')}}
+      v.state='idle';v.think=0;hud()}
     else{v.state='rest';v.think=.3}
     return}
   if(st==='eat'){v.hitT+=dt;if(v.hitT>=1.6){eat(v);v.state='idle';v.think=0}return}
@@ -809,6 +816,7 @@ function updFolk(v,dt){
   }
 }
 function workFish(v,dt){
+  if(!v.rake&&v.catch===0&&(S.rakes||0)>0&&!folk.some(o=>o!==v&&o.state==='toRake'&&o.rakeAct==='get')){v.task=null;v.state='idle';v.think=0;return} // a rake is waiting by the vent: go get it first
   v.hitT+=dt;v.fishT+=dt;
   if(v.hitT>=1.2){v.hitT=0;drain(v,.3);
     if(onScreen(v)&&rnd()<.6)burst(v.x*T+v.face*6,v.y*T-2,3,['#d2c79a','#bfb487']);
@@ -1039,13 +1047,20 @@ bar.innerHTML=`<button class="tool" data-t="build" title="Build (2)"><img id="bu
   `<button class="tool" data-t="res" title="See all your resources"><img src="${BSPR.store.toDataURL()}" alt=""><span>Resources</span></button>`;
 tray.innerHTML=BUILDS.map(id=>{const d=BUILD[id];return`<button class="bb" data-b="${id}" title="${d.tip}"><img src="${bIcon[id].toDataURL()}" alt=""><span>${d.name}</span><span class="cost">${costHTML(d.cost)}</span></button>`}).join('');
 bar.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b)return;ensureAudio();const t=b.dataset.t;if(t==='res'){toggleRes();return}closeRes();if(t==='build')toggleTray();else{setTool(t);closeTray()}});
-tray.addEventListener('click',e=>{const b=e.target.closest('.bb');if(!b||b.disabled)return;ensureAudio();setTool(b.dataset.b);hud()});
+tray.addEventListener('click',e=>{const b=e.target.closest('.bb');if(!b||b.disabled)return;ensureAudio();if(BUILD[b.dataset.b].item){makeItem(b.dataset.b);return}setTool(b.dataset.b);hud()});
+function makeItem(id){ // tools are made on the spot and left by the vent for someone to pick up
+  const d=BUILD[id];if(!afford(d.cost)){sfx('no');toast('Not enough for a '+d.name+'.');return}
+  pay(d.cost);S.rakes=(S.rakes||0)+1;sfx('place');const f=fire();burst((f.x+.3)*T,(f.y+2)*T-4,10,['#d4a26a','#e8dcc0']);
+  addFloat((f.x+1)*T,f.y*T-14,'A mussel rake, left by the vent',null,'#fff6c8',3.5);
+  if(!folk.some(v=>v.job==='fish'))toast('Put an octopus on Mussels and they will pick up the rake.',5000);hud()}
+function dropRake(v){if(v&&v.rake){v.rake=false;S.rakes=(S.rakes||0)+1}} // whatever happens, the rake ends up back by the vent
 function toggleTray(){if(tray.hidden){closeRes();tray.hidden=false;document.body.classList.add('tray')}else closeTray();if(!tray.hidden&&sel&&sel.b)select(null);hud();syncSel();eelRender()}
 function closeTray(){tray.hidden=true;document.body.classList.remove('tray'); // closing the build section also puts the building down
   if(BUILD[tool])tool='look';cv.style.cursor=tool==='look'?'grab':'crosshair';if(typeof btipEl!=='undefined'){btipEl.hidden=true;document.body.classList.remove('btip')}syncSel()}
 const rtray=document.getElementById('rtray');
 function renderRes(){if(rtray.hidden)return;const shown=RES.filter(([k])=>k==='wood'||k==='stone'||k==='fish'||k==='meal'||(S.res[k]||0)>0);
   rtray.innerHTML='<div class="rh">Resources</div>'+shown.map(([k,n])=>`<img src="${iconURL[k]}" alt=""><span>${n}</span><span class="rn">${S.res[k]||0}</span>`).join('')+
+    ((S.rakes||0)+folk.filter(v=>v.rake).length?`<div class="rh" style="margin-top:4px">Tools</div><img src="${BSPR.rake.toDataURL()}" alt=""><span>Mussel rakes</span><span class="rn">${folk.filter(v=>v.rake).length} carried, ${S.rakes||0} by the vent</span>`:'')+
     (shown.length<RES.length?'<div class="rh" style="color:var(--muted);font-size:7px">More will show up as you find them.</div>':'')}
 function toggleRes(){if(rtray.hidden){closeTray();rtray.hidden=false;document.body.classList.add('rtray');renderRes()}else closeRes();syncResBtn()}
 function closeRes(){rtray.hidden=true;document.body.classList.remove('rtray');syncResBtn()}
@@ -1178,7 +1193,7 @@ function hud(){
   jtog.querySelector('span').textContent=jobsBox.classList.contains('min')?('Jobs \u00b7 '+(jf.classList.contains('bad')?jf.textContent:(idle?idle+' idle':'busy'))+''):'Jobs';
   document.getElementById('evoT').textContent='Traits \u00b7 Gen '+colonyGen();document.getElementById('evoP').hidden=true;
   if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
-    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.hidden=!!(d.once&&count(id,false))}); // one-off items leave the tray once placed (they come back if removed)
+    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));if(d.item){const n=(S.rakes||0)+folk.filter(v=>v.rake).length;b.title=d.tip+(n?' (you have '+n+')':'')}b.hidden=!!(d.once&&count(id,false))}); // one-off items leave the tray once placed (they come back if removed)
 }
 // ----- info card: tap an octopus or a den -----
 let sel=null;
@@ -1190,7 +1205,7 @@ function renderInfo(){
   infoEl.hidden=false;const jobName=j=>({chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook',idle:'Idle'})[j]||j;
   infoEl.classList.toggle('sheet',!!sel.v);document.body.classList.toggle('sheetOpen',!!sel.v);
   if(sel.v){const v=sel.v,d=denOf(v),sx=v.sex==='f'?'\u2640':'\u2642',e=d&&d.eggs,L=v.life||{},x=v.xp||{};
-    let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job);
+    let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job)+(v.rake?' \u00b7 carrying a mussel rake':'');
     const mood=v.sadUntil>time?'Sad':v.food<=0?'Starving':v.food<HUNGRY_AT?'Hungry':v.state==='rest'?'Relaxing':v.state==='work'?'Busy':v.state==='eat'?'Eating':'Swimming about';
     const traits=(v.traits||[]).length?(v.traits.map(t=>`<span>${TR[t].icon}</span><span><b>${TR[t].name}</b><br>${TR[t].desc}</span>`).join('')):`<span></span><span>No traits yet. Babies can inherit them or discover new ones.</span>`;
     const row=(k,n)=>n?`<span>${k}</span><span>${n}</span>`:'';
@@ -1297,18 +1312,18 @@ function checkHint(){
 // ================= save / load =================
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
-  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,fe:S.firstEel||0,eT:{at:S.eelAt!=null?Math.max(0,S.eelAt-time):null,fa:S.firstEelAt!=null?Math.max(0,S.firstEelAt-time):null,nx:eelNext?Math.max(0,eelNext-time):null},quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,pol:S.polishTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
-  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,rakes:S.rakes||0,fe:S.firstEel||0,eT:{at:S.eelAt!=null?Math.max(0,S.eelAt-time):null,fa:S.firstEelAt!=null?Math.max(0,S.firstEelAt-time):null,nx:eelNext?Math.max(0,eelNext-time):null},quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,pol:S.polishTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
+  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,rk:v.rake?1:0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
     b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0,mt:b.eggs.mt||[],ft:b.eggs.ft||[],mx:b.eggs.mx||{},fx:b.eggs.fx||{},fo:b.eggs.focus||null,mn:b.eggs.mname||null,fn:b.eggs.fname||null}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
-    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,gem:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,firstEel:d.fe!=null?d.fe:(d.eel>=1&&(d.pieces||d.quest)?1:0),quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,polishTip:d.pol||0,firstBaby:d.fb||null,pearlT:d.pt||0,pearlTip:d.ptip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
-  const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,gem:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,rakes:d.rakes||0,firstEel:d.fe!=null?d.fe:(d.eel>=1&&(d.pieces||d.quest)?1:0),quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,polishTip:d.pol||0,firstBaby:d.fb||null,pearlT:d.pt||0,pearlTip:d.ptip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
+  const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(t==='rake'){S.rakes=(S.rakes||0)+1}else if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
   list.forEach((e,k)=>{if(Array.isArray(e))spawnFolk(k===0,e[0],e[1],{sex:sexes[k%5]});
-    else Object.assign(spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1,multi:!!e.mu,col2:e.mu?e.mu[0]:null,col3:e.mu?e.mu[1]:null,traits:e.tr||[BASE_TRAITS[rnd()*BASE_TRAITS.length|0]],xp:e.xp,life:e.li,mom:e.mo,dad:e.da,kids:e.ki}),{lost:e.lt||0,sadUntil:time+(e.sd||0)})});
+    else Object.assign(spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1,multi:!!e.mu,col2:e.mu?e.mu[0]:null,col3:e.mu?e.mu[1]:null,traits:e.tr||[BASE_TRAITS[rnd()*BASE_TRAITS.length|0]],xp:e.xp,life:e.li,mom:e.mo,dad:e.da,kids:e.ki}),{lost:e.lt||0,rake:!!e.rk,sadUntil:time+(e.sd||0)})});
   if(!S.found.length)S.found=[...new Set(folk.flatMap(v=>v.traits))];
   for(const[b,ow,eg]of pend){if(ow!=null&&ow>=0&&folk[ow])b.owner=folk[ow].id;
     if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2,mm:!!eg.mm,fm:!!eg.fm,mt:eg.mt||[],ft:eg.ft||[],mx:eg.mx||{},fx:eg.fx||{},focus:eg.fo||null,mname:eg.mn||m.name,fname:eg.fn||null};m.state='brood';m.job='idle'}}
@@ -1411,7 +1426,7 @@ function catchVictim(e){
   burst(v.x*T,v.y*T-8,18,['#e0533d','#a83426','#ffffff']);sfx('no');
   addFloat(v.x*T,v.y*T-26,v.name+(v.lost?' was caught by the eel again!':' was caught by an eel!'),null,'#ffb4a8',4.5);
   if(sel&&sel.v===v)select(null);
-  folk.splice(folk.indexOf(v),1);hud();
+  dropRake(v);folk.splice(folk.indexOf(v),1);hud();
 }
 function updEels(dt){
   for(const e of eels){e.t+=dt;if(e.t<0)continue;const v=e.v;
@@ -1580,6 +1595,8 @@ function drawFire(b){
   for(let k=0;k<st;k++){const xx=px+24+(k%2)*3,yy=py+26-k*3;ctx.fillStyle=INK;ctx.fillRect(xx-1,yy-1,6,5);ctx.fillStyle='#f2a7b5';ctx.fillRect(xx,yy,4,3);ctx.fillStyle='#ffffff';ctx.fillRect(xx,yy,2,1)}
   if(S.res.fish>0){ctx.drawImage(MINI.fish,px+1,py+3)}if(S.res.meal>0){ctx.drawImage(MINI.meal,px+23,py+3)}
   ctx.drawImage(BSPR.fire,px,py);
+  for(let k=0;k<Math.min(3,S.rakes||0);k++){const rx=px-8+k*2,ry=py+30-k*3; // spare mussel rakes lying by the vent
+    ctx.fillStyle=INK;ctx.fillRect(rx-1,ry-1,12,3);ctx.fillRect(rx+9,ry-3,3,7);ctx.fillStyle='#a8713f';ctx.fillRect(rx,ry,9,1);ctx.fillStyle='#e8dcc0';ctx.fillRect(rx+10,ry-2,1,5);ctx.fillStyle='#fff4dc';ctx.fillRect(rx+11,ry-2,1,1);ctx.fillRect(rx+11,ry,1,1);ctx.fillRect(rx+11,ry+2,1,1)}
   const p=.55+Math.sin(time*2.4)*.25+Math.sin(time*5.3)*.1;
   ctx.globalAlpha=p;ctx.fillStyle='#ff9f43';ctx.fillRect(13,0,0,0);
   ctx.fillRect(px+13,py+8,6,1);ctx.fillStyle='#ffd56b';ctx.fillRect(px+14,py+8,4,1);
@@ -1598,6 +1615,8 @@ function drawFolk(v){
   if(v.face<0){ctx.save();ctx.translate(px+16,py);ctx.scale(-1,1);ctx.drawImage(img,0,0);ctx.restore()}else ctx.drawImage(img,px,py);
   if(v.arr){const q=Math.round(Math.sin(time*3+v.id));ctx.font='6px "Press Start 2P", monospace';ctx.textBaseline='middle';ctx.fillStyle=INK;ctx.fillText('?',px+6,py-7+q);ctx.fillStyle='#ffffff';ctx.fillText('?',px+5,py-8+q)}
   const hx=v.face>0?px+14:px+1,hy=py+16;
+  if(v.rake&&!(v.state==='work'&&v.task&&v.task.kind==='fish')){const rx=v.face>0?px+1:px+13; // carried on its back, teeth up
+    ctx.fillStyle=INK;ctx.fillRect(rx-1,py+3,3,13);ctx.fillRect(rx-3,py+1,7,4);ctx.fillStyle='#a8713f';ctx.fillRect(rx,py+5,1,10);ctx.fillStyle='#e8dcc0';ctx.fillRect(rx-2,py+2,5,1);ctx.fillStyle='#fff4dc';for(const t of[-2,0,2])ctx.fillRect(rx+t,py+3,1,1)}
   if(v.food<15){const bx=px+3,by=py-4,bb=Math.round(Math.sin(time*4));ctx.fillStyle='#1d2b3a';ctx.fillRect(bx-1,by-1+bb,12,9);ctx.fillStyle='#ffffff';ctx.fillRect(bx,by+bb,10,7);ctx.fillRect(bx+4,by+7+bb,2,1);ctx.drawImage(MINI.meal,bx+1,by+1+bb)}
   const t=v.task;
   if(v.state==='work'&&t){
@@ -1615,6 +1634,7 @@ function drawFolk(v){
     const tip=drawArm(hx,hy,hx+dx,hy+dy,bend,wig,v.col);
     if(t.kind==='polish'&&v.polishing)ctx.drawImage(MINI.gem,Math.round(tip.x)-4,Math.round(tip.y)-5);
     if(t.kind==='cook'&&v.cooking)ctx.drawImage(MINI.fish,Math.round(tip.x)-4,Math.round(tip.y)-5);
+    if(t.kind==='fish'&&v.rake){const rx=Math.round(tip.x),ry=Math.round(tip.y);ctx.fillStyle=INK;ctx.fillRect(rx-3,ry-1,7,3);ctx.fillStyle='#e8dcc0';ctx.fillRect(rx-2,ry,5,1);ctx.fillStyle='#fff4dc';for(const t2 of[-2,0,2])ctx.fillRect(rx+t2,ry+1,1,1)}
     if(t.kind==='fish'&&v.catch>0)ctx.drawImage(MINI.fish,v.face>0?hx-9:hx+2,hy-3);
     return}
   if(v.state==='eat'){ctx.drawImage(MINI.meal,v.face>0?hx-2:hx-5,hy-4+((time*4|0)%2));return}
