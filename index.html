@@ -134,8 +134,8 @@ body.noted #hint{display:none}
     <b>Build</b>: pick a building, tap to place. Octopuses build it. Hold a placed building to remove it<br>
     <b>Traits</b>: each octopus has its own. Babies inherit them and can discover new ones from what their parents did. Focus a trait when choosing parents<br>
     <b>Family</b>: every octopus claims a den, but only females lay eggs in theirs. Tap an octopus or den to see who lives where. With a free den and 10 meals, start a family<br>
-    <b>Look</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
-    <b>Hermit crab</b>: tap it with Look for a happy claw wave
+    <b>Look around</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
+    <b>Hermit crab</b>: tap it for a happy claw wave
   </div>
   <div class="mrow"><button class="mb" id="reset">New map</button><button class="mb" id="testB">Test map</button></div>
 </div>
@@ -1025,8 +1025,7 @@ const iconURL={};for(const k of RES.map(r=>r[0]))iconURL[k]=ICON[k].toDataURL();
 function costHTML(c){return Object.entries(c).map(([k,v])=>`${v}<img src="${iconURL[k]}" alt="${k}">`).join(' ')}
 const bar=document.getElementById('bar'),tray=document.getElementById('tray');
 const buildIconURL=BSPR.house.toDataURL();
-bar.innerHTML=`<button class="tool" data-t="look" title="Look around (1). Tap the hermit crab to say hi"><img src="${ICON.hand.toDataURL()}" alt=""><span>Look</span></button>`+
-  `<button class="tool" data-t="build" title="Build (2)"><img id="buildImg" src="${buildIconURL}" alt=""><span>Build</span></button>`+
+bar.innerHTML=`<button class="tool" data-t="build" title="Build (2)"><img id="buildImg" src="${buildIconURL}" alt=""><span>Build</span></button>`+
   `<button class="tool" data-t="res" title="See all your resources"><img src="${BSPR.store.toDataURL()}" alt=""><span>Resources</span></button>`;
 tray.innerHTML=BUILDS.map(id=>{const d=BUILD[id];return`<button class="bb" data-b="${id}" title="${d.tip}"><img src="${bIcon[id].toDataURL()}" alt=""><span>${d.name}</span><span class="cost">${costHTML(d.cost)}</span></button>`}).join('');
 bar.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b)return;ensureAudio();const t=b.dataset.t;if(t==='res'){toggleRes();return}closeRes();if(t==='build')toggleTray();else{setTool(t);closeTray()}});
