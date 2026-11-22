@@ -1,13 +1,12 @@
 # Summer's Town
 
-A cute pixel-art medieval town builder. Play as Summer, with Little Wolf at your side.
+A cute pixel-art medieval town builder. Summer, Little Wolf and four friends start out around a campfire on a big map.
 
 Open `index.html` in a browser. No build step.
 
-- **Move:** WASD / arrow keys, or tap the ground
-- **Chop / mine:** tap a tree or rock (hold to keep swinging), or press Space next to it
-- **Build:** pick a building, tap to place it, then tap the site to hammer it together
-- **Pet Little Wolf:** tap them
+- **Gather:** drag a box over trees and rocks. Villagers clear it and carry everything back to the campfire
+- **Build:** pick a House, Storehouse, Workbench, Doghouse or Road and tap to place it. Villagers build it
+- **Look around:** drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap
+- **Pet Little Wolf:** tap them with Look
 
-Houses give villagers a home. Lumber Huts and Quarries then get a villager who gathers for you.
-Progress saves automatically in your browser.
+Each House brings 2 more villagers. Progress saves automatically in your browser.
