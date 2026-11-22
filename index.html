@@ -58,6 +58,7 @@ body.rtray #hint,body.rtray #note,body.rtray #btip,body.tray #note{display:none!
 .bb .cost img{height:11px}
 .bb .cost.bad{color:var(--bad)}
 .bb:disabled{opacity:.4;cursor:default}
+.bb[hidden]{display:none}
 #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;font-size:8px;line-height:1.7;padding:6px 10px;width:max-content;max-width:min(440px,calc(100% - 32px));text-align:center;transition:opacity .5s;cursor:pointer}
 #hint.hide{opacity:0;pointer-events:none}
 body.tray #hint{bottom:166px}
@@ -1177,7 +1178,7 @@ function hud(){
   jtog.querySelector('span').textContent=jobsBox.classList.contains('min')?('Jobs \u00b7 '+(jf.classList.contains('bad')?jf.textContent:(idle?idle+' idle':'busy'))+''):'Jobs';
   document.getElementById('evoT').textContent='Traits \u00b7 Gen '+colonyGen();document.getElementById('evoP').hidden=true;
   if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
-    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.disabled=!!(d.once&&count(id,false))});
+    b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.hidden=!!(d.once&&count(id,false))}); // one-off items leave the tray once placed (they come back if removed)
 }
 // ----- info card: tap an octopus or a den -----
 let sel=null;
