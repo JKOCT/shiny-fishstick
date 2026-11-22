@@ -44,6 +44,12 @@ button:focus-visible{outline:2px solid #fff;outline-offset:1px}
 .tool.sel{background:var(--sel)}
 #tray{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
 #tray[hidden]{display:none}
+#rtray{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);width:min(260px,calc(100% - 16px));padding:8px 10px;font-size:8px;display:grid;grid-template-columns:20px 1fr auto;gap:5px 8px;align-items:center;font-variant-numeric:tabular-nums}
+#rtray[hidden]{display:none}
+#rtray img{width:18px;height:18px;image-rendering:pixelated}
+#rtray .rn{text-align:right}
+#rtray .rh{grid-column:1/4;color:#2f7f8a;font-size:8px}
+body.rtray #hint,body.rtray #note,body.rtray #btip,body.tray #note{display:none!important}
 #tray::-webkit-scrollbar{display:none}
 .bb{flex:0 0 auto;width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 2px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer}
 .bb img{height:28px;image-rendering:pixelated}
@@ -136,6 +142,7 @@ body.noted #hint{display:none}
 <canvas id="mini" class="panel" title="Tap to jump there" hidden></canvas>
 <div id="hint" class="panel" title="Tap to hide"></div>
 <div id="tray" class="panel" hidden></div>
+<div id="rtray" class="panel" hidden aria-label="Resources"></div>
 <div id="bar" class="panel"></div>
 <div id="info" class="panel" hidden></div>
 <div id="note" class="panel" hidden><span>A den is ready and there's food to spare. Start a family?</span><div class="mrow"><button class="mb" id="noteGo">Choose parents</button><button class="mb" id="noteLater">Later</button></div></div>
@@ -1020,12 +1027,20 @@ const bar=document.getElementById('bar'),tray=document.getElementById('tray');
 const buildIconURL=BSPR.house.toDataURL();
 bar.innerHTML=`<button class="tool" data-t="look" title="Look around (1). Tap the hermit crab to say hi"><img src="${ICON.hand.toDataURL()}" alt=""><span>Look</span></button>`+
   `<button class="tool" data-t="build" title="Build (2)"><img id="buildImg" src="${buildIconURL}" alt=""><span>Build</span></button>`+
-  ``;
+  `<button class="tool" data-t="res" title="See all your resources"><img src="${BSPR.store.toDataURL()}" alt=""><span>Resources</span></button>`;
 tray.innerHTML=BUILDS.map(id=>{const d=BUILD[id];return`<button class="bb" data-b="${id}" title="${d.tip}"><img src="${bIcon[id].toDataURL()}" alt=""><span>${d.name}</span><span class="cost">${costHTML(d.cost)}</span></button>`}).join('');
-bar.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b)return;ensureAudio();const t=b.dataset.t;if(t==='build')toggleTray();else{setTool(t);closeTray()}});
+bar.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b)return;ensureAudio();const t=b.dataset.t;if(t==='res'){toggleRes();return}closeRes();if(t==='build')toggleTray();else{setTool(t);closeTray()}});
 tray.addEventListener('click',e=>{const b=e.target.closest('.bb');if(!b||b.disabled)return;ensureAudio();setTool(b.dataset.b);hud()});
-function toggleTray(){if(tray.hidden){tray.hidden=false;document.body.classList.add('tray')}else closeTray();if(!tray.hidden&&sel&&sel.b)select(null);hud();syncSel();eelRender()}
-function closeTray(){tray.hidden=true;document.body.classList.remove('tray');syncSel()}
+function toggleTray(){if(tray.hidden){closeRes();tray.hidden=false;document.body.classList.add('tray')}else closeTray();if(!tray.hidden&&sel&&sel.b)select(null);hud();syncSel();eelRender()}
+function closeTray(){tray.hidden=true;document.body.classList.remove('tray'); // closing the build section also puts the building down
+  if(BUILD[tool])tool='look';cv.style.cursor=tool==='look'?'grab':'crosshair';if(typeof btipEl!=='undefined'){btipEl.hidden=true;document.body.classList.remove('btip')}syncSel()}
+const rtray=document.getElementById('rtray');
+function renderRes(){if(rtray.hidden)return;const shown=RES.filter(([k])=>k==='wood'||k==='stone'||k==='fish'||k==='meal'||(S.res[k]||0)>0);
+  rtray.innerHTML='<div class="rh">Resources</div>'+shown.map(([k,n])=>`<img src="${iconURL[k]}" alt=""><span>${n}</span><span class="rn">${S.res[k]||0}</span>`).join('')+
+    (shown.length<RES.length?'<div class="rh" style="color:var(--muted);font-size:7px">More will show up as you find them.</div>':'')}
+function toggleRes(){if(rtray.hidden){closeTray();rtray.hidden=false;document.body.classList.add('rtray');renderRes()}else closeRes();syncResBtn()}
+function closeRes(){rtray.hidden=true;document.body.classList.remove('rtray');syncResBtn()}
+function syncResBtn(){const b=bar.querySelector('.tool[data-t="res"]');if(b)b.classList.toggle('sel',!rtray.hidden)}
 function syncSel(){
   const building=!!BUILD[tool];
   bar.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.t==='build'?(building||!tray.hidden):b.dataset.t===tool&&tray.hidden));
@@ -1034,7 +1049,7 @@ function syncSel(){
 }
 function setTool(id){tool=id;syncSel();cv.style.cursor=id==='look'?'grab':'crosshair';showBTip()}
 const resEl=document.getElementById('res');
-resEl.innerHTML=RES.map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
+resEl.innerHTML=RES.filter(([k])=>k==='wood'||k==='stone').map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
 const jlist=document.getElementById('jlist'),jobsBox=document.getElementById('jobs'),jtog=document.getElementById('jtog');
 function setJobsMin(m){jobsBox.classList.toggle('min',m);jtog.setAttribute('aria-expanded',!m);document.getElementById('jarr').textContent=m?'\u25b8':'\u25be';try{localStorage.setItem(KEY+'-jobsmin',m?'1':'0')}catch(e){}}
 jtog.onclick=()=>{setJobsMin(!jobsBox.classList.contains('min'));hud()};
@@ -1045,7 +1060,7 @@ jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;
 const menu=document.getElementById('menu'),menuB=document.getElementById('menuB'),mapB=document.getElementById('mapb');
 function placeMini(){mini.style.top=menu.hidden?'54px':(menu.getBoundingClientRect().bottom+8)+'px'}
 menuB.onclick=()=>{ensureAudio();menu.hidden=!menu.hidden;menuB.setAttribute('aria-expanded',!menu.hidden);placeMini()};
-function closeMenus(){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini();closeTray()}
+function closeMenus(){closeRes();menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini();closeTray()}
 cv.addEventListener('pointerdown',()=>{if(!menu.hidden){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini()}},true);
 document.getElementById('zin').onclick=()=>zoomTo(zoomT*1.25);
 document.getElementById('zout').onclick=()=>zoomTo(zoomT/1.25);
@@ -1137,8 +1152,8 @@ function goExplore(v){
 }
 function exploreLoot(){const l={};const add=(k,n)=>l[k]=(l[k]||0)+n;add(rnd()<.5?'copper':'coal',1+(rnd()*2|0));if(rnd()<.6)add('stone',2+(rnd()*4|0));if(rnd()<.4)add('fish',2+(rnd()*3|0));if(rnd()<.25)add(rnd()<.5?'copper':'coal',1);return l}
 function hud(){
-  for(const[k]of RES){document.getElementById('n-'+k).textContent=S.res[k];
-    if(k==='copper'||k==='coal'||k==='gem')document.getElementById('r-'+k).hidden=S.res[k]===0}
+  for(const k of['wood','stone'])document.getElementById('n-'+k).textContent=S.res[k]||0;
+  renderRes();
   const idle=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)).length,growing=folk.filter(v=>!adult(v)).length;
   for(const j of JOBS)document.getElementById('jc-'+j.id).textContent=folk.filter(v=>v.job===j.id).length;
   jlist.querySelectorAll('.jb').forEach(b=>{b.disabled=+b.dataset.d>0?idle===0:!folk.some(v=>v.job===b.dataset.j)});
