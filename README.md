@@ -1,14 +1,14 @@
-# Summer's Town
+# Summer's Reef
 
-A cute pixel-art medieval town builder. Summer, Little Wolf and four friends start out around a campfire on a big map.
+A chill pixel-art underwater society game. Summer and four other octopuses live around a warm hydrothermal vent, with a little hermit crab tagging along.
 
 Open `index.html` in a browser. No build step.
 
-- **Jobs:** use + and - to assign villagers to Chop, Mine, Fish or Cook. They find work on their own and bring everything back to the campfire
-- **Food:** work and walking make villagers hungry. Fishers catch fish, cooks turn them into meals. Without food, villagers work at half speed
-- **Resources don't grow back:** villagers roam further as the land is cleared. Mining sometimes turns up copper or coal
-- **Build:** pick a House, Storehouse, Workbench, Doghouse or Road and tap to place it. Villagers build it
-- **Look around:** drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap. Zoom with wheel, pinch or +/-
-- **Pet Little Wolf:** tap them with Look
+- **Jobs:** use + and - to send octopuses to gather Algae or Shells, Fish in the trenches, or Cook at the vent. They bring everything back to the vent
+- **Food:** work and swimming make octopuses hungry. Fishers catch fish, cooks bake them into meals. Without food, octopuses work at half speed
+- **Nothing grows back:** octopuses roam further as the seafloor is cleared. Shell mounds sometimes hide pearls or sea glass
+- **Build:** Den, Clam cache (extra drop-off), Tool rock (faster work), Crab shell (a nap spot for the hermit crab) and pebble Paths
+- **Look around:** drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap. Zoom with wheel, pinch or the menu
+- **Hermit crab:** tap it with Look for a happy claw wave
 
 Progress saves automatically in your browser.
