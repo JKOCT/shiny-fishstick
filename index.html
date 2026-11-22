@@ -1226,7 +1226,7 @@ function renderInfo(){
     const traits=(v.traits||[]).length?(v.traits.map(t=>`<span>${TR[t].icon}</span><span><b>${TR[t].name}</b><br>${TR[t].desc}</span>`).join('')):`<span></span><span>No traits yet. Babies can inherit them or discover new ones.</span>`;
     const row=(k,n)=>n?`<span>${k}</span><span>${n}</span>`:'';
     const stats=row('Algae gathered',L.wood)+row('Shells dug',L.stone)+row('Mussels found',L.fish)+row('Pearls found',L.copper)+row('Sea glass found',L.coal)+
-      row('Meals cooked',L.meals)+row('Pearls polished',L.gem)+row('Father',v.fathered?'Yes, he is in his last days':0)+row('Distance swum',x.swim>=1?Math.round(x.swim)+' tiles':0)+row('Hellos waved',x.social)+row('Eel attack',v.lost?'Lost a tentacle':0)+row('Times gone hungry',x.hungry>=1?Math.round(x.hungry)+'s':0);
+      row('Meals cooked',L.meals)+row('Pearls polished',L.gem)+row('Distance swum',x.swim>=1?Math.round(x.swim)+' tiles':0)+row('Hellos waved',x.social)+row('Eel attack',v.lost?'Lost a tentacle':0)+row('Times gone hungry',x.hungry>=1?Math.round(x.hungry)+'s':0);
     infoEl.innerHTML=`<button id="shClose" aria-label="Close">\u00d7</button>`+
       `<div class="sh-top"><canvas id="portrait" width="16" height="20"></canvas><div><div class="sh-name">${swatch(v)}${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span>${v.multi?'<span class="badge">\u2605 Multicolored</span>':''}</div>`+
       `<div class="sh-sub">Generation ${v.gen||1} \u00b7 ${adult(v)?'Adult':'Young'} \u00b7 ${mood}</div><div style="margin-top:4px">${st}</div>`+
@@ -1260,7 +1260,7 @@ function tapSelect(w){
 const noteEl=document.getElementById('note'),pickEl=document.getElementById('pick'),pickBox=document.getElementById('pickBox');
 let snoozeUntil=0,pickSel={f:null,m:null,focus:null};
 function breedReady(){if(S.res.meal<BREED_MEALS)return false;const ad=folk.filter(v=>adult(v)&&!breeding(v));
-  return ad.some(v=>v.sex==='m')&&ad.some(v=>v.sex==='f'&&denFor(v))}
+  return ad.some(v=>v.sex==='m'&&!v.fathered)&&ad.some(v=>v.sex==='f'&&denFor(v))}
 function checkBreedNote(){
   const evo=false,br=!(sel&&sel.v)&&breedReady()&&time>snoozeUntil&&pickEl.hidden&&evoEl.hidden,show=evo||br;
   noteEl.dataset.k=evo?'evo':'breed';
@@ -1292,8 +1292,8 @@ function focusHTML(){
     `<div style="color:var(--muted)">A focused trait passes to each baby ${Math.round(FOCUS_CHANCE*100)}% of the time. What the parents did in life can also spark a brand-new trait.</div>`;
 }
 function renderPick(){
-  const ad=folk.filter(v=>adult(v)&&!breeding(v)),row=v=>{const dis=v.sex==='f'&&!denFor(v),on=pickSel.f===v||pickSel.m===v;
-    return`<button class="prow${on?' on':''}" data-id="${v.id}"${dis?' disabled':''}>${swatch(v)}${v.name}${v.multi?' \u2605':''} ${v.sex==='f'?'\u2640':'\u2642'} ${(v.traits||[]).map(t=>TR[t].icon).join('')}<small>${dis?'no free den':v.sex==='f'?(denOf(v)?'has a den':'will take a free den'):''}</small></button>`};
+  const ad=folk.filter(v=>adult(v)&&!breeding(v)),row=v=>{const dis=(v.sex==='f'&&!denFor(v))||(v.sex==='m'&&v.fathered),on=pickSel.f===v||pickSel.m===v;
+    return`<button class="prow${on?' on':''}" data-id="${v.id}"${dis?' disabled':''}>${swatch(v)}${v.name}${v.multi?' \u2605':''} ${v.sex==='f'?'\u2640':'\u2642'} ${(v.traits||[]).map(t=>TR[t].icon).join('')}<small>${dis?(v.sex==='m'?'already a father':'no free den'):v.sex==='f'?(denOf(v)?'has a den':'will take a free den'):''}</small></button>`};
   pickBox.innerHTML=`<h2>Choose parents</h2><div>Pick one mother \u2640 and one father \u2642.</div>`+
     `<div>Mothers</div>`+ad.filter(v=>v.sex==='f').map(row).join('')+`<div>Fathers</div>`+ad.filter(v=>v.sex==='m').map(row).join('')+
     focusHTML()+`<div style="color:var(--muted)">\u2605 Multicolored is rare and recessive: if both parents have it, each baby has a much better chance.</div><div class="warn">The mother will guard her eggs in her den and will not survive once they hatch. This uses ${BREED_MEALS} meals.</div>`+
