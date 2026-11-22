@@ -5,6 +5,7 @@ A chill pixel-art underwater society game. Summer and four other octopuses live 
 Open `index.html` in a browser. No build step.
 
 - **Jobs:** use + and - to send octopuses to gather Algae or Shells, forage Mussels in the soft sand around boulders, or Cook at the vent. They bring everything back to the vent
+- **Experience:** octopuses start slow at every job (45% speed) and get faster with practice, up to about 120%. A matching trait gives a head start. Pressing + picks the best idle octopus for the job, and workers swap jobs when they'd each be better at the other's
 - **Food:** work and swimming make octopuses hungry. Foragers find mussels, cooks bake them into meals. Without food, octopuses work at half speed
 - **Nothing grows back:** octopuses roam further as the seafloor is cleared. Shell mounds sometimes hide pearls or sea glass
 - **Family:** every octopus has a name, and each female claims a den of her own (males roam free). Tap an octopus or den to see who lives where. With a free den and 10 meals, pick a mother and father: she guards her eggs and passes on when 10-15 babies hatch. 2-3 stay and slowly grow up

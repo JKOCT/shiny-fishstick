@@ -71,6 +71,8 @@ body.tray #hint{bottom:166px}
 .sh-tr b{font-size:8px}
 .sh-stats{display:grid;grid-template-columns:1fr auto;gap:1px 10px;padding-right:2px;font-size:7px;font-variant-numeric:tabular-nums}
 .sh-stats span:nth-child(even){text-align:right}
+.sk{display:grid;grid-template-columns:auto 1fr auto;gap:3px 6px;align-items:center;font-size:7px}
+.fbar.sb{height:6px}.fbar.sb i{background:#5aa8d6}
 .badge{background:#ffd166;border:2px solid var(--ink);padding:0 4px;font-size:7px}
 #shClose{position:sticky;top:0;align-self:flex-end;margin:-4px -4px -18px 0;width:20px;height:20px;padding:0;background:var(--parch);border:2px solid var(--ink);cursor:pointer;font-size:9px;line-height:1}
 #info .mb{align-self:flex-start;margin-top:2px}
@@ -355,10 +357,10 @@ const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',ico
 const ORE_CHANCE=.035, HUNGRY_AT=30;
 const BREED_MEALS=10, EGG_TIME=30, GROW_RATE=1/200; // eggs hatch after 30 game-seconds; babies take ~200 game-seconds to grow up
 const TRAITS=[ // individual traits, passed from parents to babies
-  {id:'algae',icon:'\u{1F33F}',name:'Kelp sense',desc:'Gathers algae 30% faster, and sometimes finds sea glass in the kelp',hint:'parents who gathered lots of algae'},
-  {id:'shells',icon:'\u{1F41A}',name:'Shell sense',desc:'Digs shells 30% faster, with double the chance of pearls and sea glass',hint:'parents who dug lots of shells'},
-  {id:'mussels',icon:'\u{1F9AA}',name:'Mussel nose',desc:'Finds mussels 35% faster, and sometimes a pearl inside one',hint:'parents who foraged lots of mussels'},
-  {id:'cook',icon:'\u{1F525}',name:'Vent chef',desc:'Cooks 30% faster, and sometimes makes two meals from one mussel',hint:'parents who cooked a lot'},
+  {id:'algae',icon:'\u{1F33F}',name:'Kelp sense',desc:'A head start at gathering algae, and sometimes finds sea glass in the kelp',hint:'parents who gathered lots of algae'},
+  {id:'shells',icon:'\u{1F41A}',name:'Shell sense',desc:'A head start at digging shells, with double the chance of pearls and sea glass',hint:'parents who dug lots of shells'},
+  {id:'mussels',icon:'\u{1F9AA}',name:'Mussel nose',desc:'A head start at finding mussels, and sometimes a pearl inside one',hint:'parents who foraged lots of mussels'},
+  {id:'cook',icon:'\u{1F525}',name:'Vent chef',desc:'A head start at cooking, and sometimes makes two meals from one mussel',hint:'parents who cooked a lot'},
   {id:'swift',icon:'\u{1F4A8}',name:'Jet swimmer',desc:'Swims 20% faster',hint:'parents who swam long distances'},
   {id:'thrifty',icon:'\u{1F343}',name:'Slow metabolism',desc:'Gets hungry 28% slower',hint:'parents who went hungry'},
   {id:'social',icon:'\u{1F497}',name:'Gentle',desc:'Comfortable close to others, waves hello, works 20% faster next to a friend',hint:'friendly parents, and more likely every generation'},
@@ -371,6 +373,17 @@ function has(v,t){return!!(v&&v.traits&&v.traits.includes(t))}
 function colonyGen(){return folk.reduce((m,v)=>Math.max(m,v.gen||1),1)}
 function personalSpace(v){ // octopuses slowly get used to each other every generation; Gentle ones are fine up close
   return Math.max(.7,2.6*Math.pow(.94,colonyGen()-1)*(has(v,'social')?.45:1))}
+const JOB_KEYS=['chop','mine','fish','cook'],SKILL_K={chop:120,mine:120,fish:30,cook:25},SKILL_TRAIT={chop:'algae',mine:'shells',fish:'mussels',cook:'cook'};
+const SKILL_MIN=.45,SKILL_GAIN=.75,TRAIT_HEAD=.6; // novices work at 45% speed; experience brings that up to ~120%; the job's trait is worth a head start
+function skill(v,job){if(!SKILL_K[job])return 1;const x=((v.xp&&v.xp[job])||0)+(has(v,SKILL_TRAIT[job])?SKILL_K[job]*TRAIT_HEAD:0);return SKILL_MIN+SKILL_GAIN*(1-Math.exp(-x/SKILL_K[job]))}
+function skillName(m){return m<.6?'Novice':m<.8?'Apprentice':m<.98?'Skilled':m<1.1?'Expert':'Master'}
+function swapJobs(){ // octopuses drift toward the jobs they're better at, without changing how many work each job
+  const ws=folk.filter(v=>adult(v)&&!breeding(v)&&JOB_KEYS.includes(v.job)&&!v.cooking);
+  for(const a of ws)for(const b of ws){if(a===b||a.job===b.job)continue;
+    const now=skill(a,a.job)+skill(b,b.job),swap=skill(a,b.job)+skill(b,a.job);
+    if(swap>now+.12){const j=a.job;a.job=b.job;b.job=j;a.task=b.task=null;a.state=b.state='idle';a.think=b.think=.2;
+      if(onScreen(a)||onScreen(b))addFloat((a.x+b.x)/2*T,(a.y+b.y)/2*T-26,a.name+' and '+b.name+' swapped jobs',null,'#d8ecf8',3);hud();return}}
+}
 function newXp(){return{chop:0,mine:0,fish:0,cook:0,swim:0,social:0,hungry:0}}
 function oreChance(v){return ORE_CHANCE*(has(v,'shells')?2:1)*(has(v,'mimic')?1.5:1)}
 function traitChips(v){return(v.traits||[]).map(t=>`<span title="${TR[t].desc}">${TR[t].icon} ${TR[t].name}</span>`).join(', ')||'none yet'}
@@ -644,7 +657,7 @@ function updFolk(v,dt){
   v.anim+=dt;
   if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
   let work=(hasBench()?1.5:1)*(v.food<=0?.5:1)*(has(v,'tools')?1.2:1);const st=v.state;
-  if(st==='work'&&v.task){const k=v.task.kind;if((k==='tree'&&has(v,'algae'))||(k==='rock'&&has(v,'shells'))||(k==='cook'&&has(v,'cook')))work*=1.3;
+  if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);
     if(has(v,'social')&&folk.some(o=>o!==v&&o.state==='work'&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<4))work*=1.2}
   if(v.food<=0)v.xp.hungry+=dt;
   if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
@@ -681,7 +694,7 @@ function workFish(v,dt){
   v.hitT+=dt;v.fishT+=dt;
   if(v.hitT>=1.2){v.hitT=0;drain(v,.3);
     if(onScreen(v)&&rnd()<.6)burst(v.x*T+v.face*6,v.y*T-2,3,['#d2c79a','#bfb487']);
-    if(rnd()<.22*(has(v,'mussels')?1.35:1)){v.catch++;v.xp.fish++;if(has(v,'mussels')&&rnd()<.06*(has(v,'mimic')?1.5:1)){v.pearls=(v.pearls||0)+1;if(onScreen(v)){sfx('ore');addFloat(v.x*T,v.y*T-34,'A pearl!','copper','#ffd38a')}}
+    if(rnd()<.22){v.catch++;v.xp.fish++;if(has(v,'mussels')&&rnd()<.06*(has(v,'mimic')?1.5:1)){v.pearls=(v.pearls||0)+1;if(onScreen(v)){sfx('ore');addFloat(v.x*T,v.y*T-34,'A pearl!','copper','#ffd38a')}}
       if(onScreen(v)){burst(v.x*T+v.face*6,v.y*T-4,8,['#d2c79a','#8fa3c8','#3b4a6b']);sfx('splash');addFloat(v.x*T,v.y*T-26,'+1','fish')}}}
   if(v.catch>=3||(v.fishT>30&&v.catch>0)){v.carry={fish:v.catch};if(v.pearls){v.carry.copper=v.pearls;v.pearls=0}v.catch=0;v.task=null;v.state='idle';v.think=0}
 }
@@ -710,10 +723,10 @@ function buildHit(b,who){
 }
 function assignJob(job,delta){
   if(delta>0){
-    const cand=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)).sort((a,b)=>(a.carry?1:0)-(b.carry?1:0));
+    const cand=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)).sort((a,b)=>skill(b,job)-skill(a,job)||(a.carry?1:0)-(b.carry?1:0));
     if(!cand.length){sfx('no');return}cand[0].job=job;cand[0].think=0;sfx('mark');
   }else{
-    const cand=folk.filter(v=>v.job===job).sort((a,b)=>(a.carry?1:0)-(b.carry?1:0)||(a.state==='work'?1:0)-(b.state==='work'?1:0));
+    const cand=folk.filter(v=>v.job===job).sort((a,b)=>skill(a,job)-skill(b,job)||(a.carry?1:0)-(b.carry?1:0)||(a.state==='work'?1:0)-(b.state==='work'?1:0));
     if(!cand.length)return;cand[0].job='idle';sfx('unmark');
   }
   hud();
@@ -953,7 +966,7 @@ function hud(){
 let sel=null;
 const infoEl=document.getElementById('info');
 function swatch(v){return v.multi?`<span class="sw" style="background:linear-gradient(135deg,${v.col} 0 40%,${v.col2} 40% 70%,${v.col3} 70%)"></span>`:`<span class="sw" style="background:${v.col}"></span>`}
-function select(x){sel=x;if(x)S.tapped=1;renderInfo();checkBreedNote()}
+function select(x){if(x&&!x.v&&!x.b)x=null;sel=x;if(x)S.tapped=1;renderInfo();checkBreedNote()}
 function renderInfo(){
   if(!sel||(sel.v&&!folk.includes(sel.v))||(sel.b&&(sel.b.removed||!sel.b.done))){sel=null;infoEl.hidden=true;return}
   infoEl.hidden=false;const jobName=j=>({chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook',idle:'Idle'})[j]||j;
@@ -972,6 +985,9 @@ function renderInfo(){
       `<div class="sh-h">Family</div><div class="sh-stats"><span>Parents</span><span>${v.mom||v.dad?[v.mom,v.dad].filter(Boolean).join(' & '):'Founder'}</span>`+
       `<span>Children</span><span>${v.kids||0}</span><span>Home</span><span>${d?'Her den':!adult(v)?'Too young':v.sex==='m'?'Roams free':'No den yet'}</span></div>`+
       (d?`<button class="mb" id="infoGo">Show den</button>`:'')+
+      `<div class="sh-h">Skills</div><div class="sk">${JOB_KEYS.map(j=>{const m=skill(v,j),nm={chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook'}[j];
+        return`<span${v.job===j?' style="color:#2f7f8a;font-weight:bold;text-decoration:underline"':''}>${nm}${has(v,SKILL_TRAIT[j])?' '+TR[SKILL_TRAIT[j]].icon:''}</span><span class="fbar sb"><i style="width:${Math.round((m-SKILL_MIN)/SKILL_GAIN*100)}%"></i></span><span>${skillName(m)}</span>`}).join('')}</div>`+
+      `<div class="sh-sub">Trait icon: head start. Underlined: current job. Experience makes them faster.</div>`+
       `<div class="sh-h">Traits</div><div class="sh-tr">${traits}</div>`+
       `<div class="sh-h">Life so far</div><div class="sh-stats">${stats||'<span>Just getting started</span><span></span>'}</div>`;
     const pc=document.getElementById('portrait').getContext('2d');pc.imageSmoothingEnabled=false;pc.drawImage(v.spr[(time*2|0)%2],0,0);
@@ -1082,7 +1098,7 @@ addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 addEventListener('pagehide',save);
 
 // ================= update =================
-let tick=0,saveT=0,smokeT=0,miniT=0,sparkT=0;
+let swapT=0,tick=0,saveT=0,smokeT=0,miniT=0,sparkT=0;
 function update(dt){
   if(Math.abs(zoomT-zoom)>.0005&&!(drag&&drag.mode==='pinch')){const k=1-Math.pow(.00005,dt),nz=Math.abs(zoomT-zoom)<.004?zoomT:zoom+(zoomT-zoom)*k;applyZoom(nz,zAnchor.sx,zAnchor.sy)}
   const kx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),ky=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
@@ -1111,6 +1127,7 @@ function update(dt){
   tick+=dt;if(tick>=1){tick-=1;
     for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
     claimDens();checkHint();hintT++;hud();
+    swapT=(swapT||0)+1;if(swapT>=8){swapT=0;swapJobs()}
     const friendly=colonyGen()>=3;for(const a of folk)for(const c of folk){if(!friendly&&!has(a,'social')&&!has(c,'social'))continue;if(a.id>=c.id||a.state==='brood'||c.state==='brood')continue;
       if(time>a.greetT&&time>c.greetT&&Math.hypot(a.x-c.x,a.y-c.y)<1.6){a.greetT=c.greetT=time+25+rnd()*20;a.xp.social++;c.xp.social++;
         if(onScreen(a))for(const o of[a,c])parts.push({x:o.x*T,y:o.y*T-18*o.size,vx:(rnd()-.5)*6,vy:-12,g:0,life:1.4,max:1.4,heart:true})}}}
