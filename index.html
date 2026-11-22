@@ -93,7 +93,7 @@ body.noted #hint{display:none}
     <b>Jobs</b>: + and - put your octopuses to work<br>
     <b>Food</b>: foragers find mussels in the soft sand around boulders, cooks bake them at the vent. Hungry octopuses slow down<br>
     <b>Build</b>: pick a building, tap to place. Octopuses build it<br>
-    <b>Family</b>: each octopus claims a den. Tap an octopus or den to see who lives where. With a free den and 10 meals, start a family<br>
+    <b>Family</b>: each female claims a den; males roam free. Tap an octopus or den to see who lives where. With a free den and 10 meals, start a family<br>
     <b>Look</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
     <b>Hermit crab</b>: tap it with Look for a happy claw wave
   </div>
@@ -327,7 +327,7 @@ const GAME_SPEED=0.5; // octopuses and the hermit crab move at half speed for a 
 
 const BUILD={
   fire:{name:'Vent',w:2,h:2,cost:{},hits:1},
-  house:{name:'Den',w:2,h:2,cost:{stone:12},hits:16,tip:'A cozy den built from shells. Each octopus claims one, and mothers lay their eggs there'},
+  house:{name:'Den',w:2,h:2,cost:{stone:12},hits:16,tip:'A cozy den built from shells. Each female claims one and lays her eggs there'},
   store:{name:'Clam cache',w:2,h:2,cost:{wood:20,stone:10},hits:20,tip:'Another drop-off point, so fewer long trips'},
   bench:{name:'Tool rock',w:1,h:1,cost:{wood:10,stone:6},hits:10,once:true,tip:'Sharper tools: everyone works 50% faster'},
   dog:{name:'Crab shell',w:1,h:1,cost:{wood:6},hits:6,once:true,tip:'A roomy spare shell for your hermit crab to nap in'},
@@ -438,8 +438,8 @@ function denOf(v){return S.buildings.find(b=>b&&b.type==='house'&&b.owner===v.id
 function ownerOf(b){return b&&b.owner!=null?folk.find(v=>v.id===b.owner):null}
 function denFor(f){const own=denOf(f);if(own)return own.done&&!own.eggs?own:null;return S.buildings.find(b=>b&&b.type==='house'&&b.done&&!b.eggs&&!ownerOf(b))||null}
 function claimDens(){
-  for(const b of S.buildings){if(!b||b.type!=='house'||!b.done)continue;if(b.owner!=null&&!ownerOf(b))b.owner=null;if(b.owner!=null)continue;
-    const v=folk.find(o=>adult(o)&&!denOf(o));if(!v)continue;b.owner=v.id;
+  for(const b of S.buildings){if(!b||b.type!=='house'||!b.done)continue;const ow=ownerOf(b);if(b.owner!=null&&(!ow||(ow.sex!=='f'&&!b.eggs)))b.owner=null;if(b.owner!=null)continue;
+    const v=folk.find(o=>adult(o)&&o.sex==='f'&&!denOf(o));if(!v)continue;b.owner=v.id;
     addFloat((b.x+1)*T,b.y*T-12,v.name+"'s den",null,'#fff6c8');if(onScreen(v))sfx('pop')}
 }
 function goDen(v,b){const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===b?1:null));if(r){v.path=r.path;return true}return false}
@@ -878,10 +878,10 @@ function renderInfo(){
     let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job);
     infoEl.innerHTML=`<div class="nm"><span class="sw" style="background:${v.col}"></span>${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span></div><div>${st}</div>`+
       `<div>Food</div><div class="fbar"><i style="width:${Math.round(v.food)}%"></i></div>`+
-      `<div>${d?'Has a den (outlined)':adult(v)?'No den yet':'Too young for a den'}</div>`+(d?`<button class="mb" id="infoGo">Show den</button>`:'');
+      `<div>${d?'Has a den (outlined)':!adult(v)?'Too young for a den':v.sex==='m'?'Males roam free, no den':'No den yet'}</div>`+(d?`<button class="mb" id="infoGo">Show den</button>`:'');
   }else{const b=sel.b,o=ownerOf(b),e=b.eggs;
     infoEl.innerHTML=`<div class="nm">${o?`<span class="sw" style="background:${o.col}"></span>${o.name}'s den`:'Empty den'}</div>`+
-      `<div>${e?(e.stage==='brood'?`Eggs hatching: ${Math.round(e.t/EGG_TIME*100)}%`:'A mother is on her way'):o?'Home sweet home':'The next octopus without a den will claim it'}</div>`+
+      `<div>${e?(e.stage==='brood'?`Eggs hatching: ${Math.round(e.t/EGG_TIME*100)}%`:'A mother is on her way'):o?'Home sweet home':'The next female without a den will claim it'}</div>`+
       (o?`<button class="mb" id="infoGo">Show ${o.name}</button>`:'');
   }
   const g=document.getElementById('infoGo');if(g)g.onclick=()=>{if(sel.v){const d=denOf(sel.v);if(d)centerOn(d.x+1,d.y+1)}else{const o=ownerOf(sel.b);if(o)centerOn(o.x,o.y-.5)}};
@@ -917,7 +917,7 @@ pickBox.addEventListener('click',e=>{
 const HINTS=[
   'Tap + next to a job to put your octopuses to work. Try Algae and Shells!',
   'Work makes octopuses hungry. Send one to gather Mussels and one to Cook so meals keep coming.',
-  'Save 12 shells and place a Den. Each octopus claims a den of their own.',
+  'Save 12 shells and place a Den. Each female claims a den of her own.',
   'Tap an octopus or a den to see who lives where.',
   'With a free den and 10 meals saved, your octopuses can start a family.',
   "Algae and shells don't come back, so your octopuses will roam further. A Clam cache saves long trips.",
