@@ -68,7 +68,15 @@ body.tray #hint{bottom:166px}
 .prow.on{background:var(--sel)}.prow:disabled{opacity:.4;cursor:default}
 .prow small{margin-left:auto;font-size:7px;color:var(--muted)}
 .warn{color:var(--bad);border-top:2px dashed var(--parch2);padding-top:6px}
-#info[hidden],#note[hidden],#pick[hidden]{display:none}
+#evoB{margin-top:2px;font-size:7px;padding:5px 6px;display:flex;align-items:center;gap:6px;justify-content:space-between}
+#evoB .pts{background:#ffd166;border:2px solid var(--ink);padding:1px 4px}
+#evoB .pts[hidden]{display:none}
+.trait{border:2px solid var(--ink);background:var(--parch);padding:6px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center}
+.trait b{font-size:9px}.trait .pips{font-size:9px;letter-spacing:2px}
+.trait .now{grid-column:1/3;color:var(--muted);font-size:7px}.trait .next{grid-column:1;font-size:7px}
+.trait .mb[disabled]{opacity:.35}
+#evo{position:fixed;inset:0;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#info[hidden],#note[hidden],#pick[hidden],#evo[hidden]{display:none}
 body.noted #hint{display:none}
 @media (prefers-reduced-motion:reduce){#hint{transition:none}}
 </style>
@@ -77,7 +85,7 @@ body.noted #hint{display:none}
 <canvas id="c"></canvas>
 <div id="town" class="panel">
   <div id="res"></div>
-  <div id="jobs"><div id="jlist"></div><div id="jfoot"></div></div>
+  <div id="jobs"><div id="jlist"></div><div id="jfoot"></div><button class="mb" id="evoB" title="Choose which traits your octopuses evolve"><span id="evoT">Evolution · Gen 1</span><span class="pts" id="evoP" hidden>1</span></button></div>
 </div>
 <button id="menuB" class="panel" title="Menu" aria-expanded="false" aria-controls="menu">☰</button>
 <div id="menu" class="panel" hidden>
@@ -93,6 +101,7 @@ body.noted #hint{display:none}
     <b>Jobs</b>: + and - put your octopuses to work<br>
     <b>Food</b>: foragers find mussels in the soft sand around boulders, cooks bake them at the vent. Hungry octopuses slow down<br>
     <b>Build</b>: pick a building, tap to place. Octopuses build it<br>
+    <b>Evolution</b>: every hatch earns a point. Pick which trait the next generations carry<br>
     <b>Family</b>: each female claims a den; males roam free. Tap an octopus or den to see who lives where. With a free den and 10 meals, start a family<br>
     <b>Look</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
     <b>Hermit crab</b>: tap it with Look for a happy claw wave
@@ -105,6 +114,7 @@ body.noted #hint{display:none}
 <div id="bar" class="panel"></div>
 <div id="info" class="panel" hidden></div>
 <div id="note" class="panel" hidden><span>A den is ready and there's food to spare. Start a family?</span><div class="mrow"><button class="mb" id="noteGo">Choose parents</button><button class="mb" id="noteLater">Later</button></div></div>
+<div id="evo" hidden><div id="evoBox" class="panel" role="dialog" aria-label="Evolution" style="width:min(380px,100%);max-height:calc(100% - 32px);overflow:auto;padding:12px;font-size:8px;line-height:1.7;display:flex;flex-direction:column;gap:6px"></div></div>
 <div id="pick" hidden><div id="pickBox" class="panel" role="dialog" aria-label="Choose parents"></div></div>
 
 <script>
@@ -322,6 +332,17 @@ const RES=[['wood','Algae'],['stone','Shells'],['copper','Pearls'],['coal','Sea 
 const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',icon:ICON.stone},{id:'fish',name:'Mussels',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal}];
 const ORE_CHANCE=.035, HUNGRY_AT=30;
 const BREED_MEALS=10, EGG_TIME=30, GROW_RATE=1/200; // eggs hatch after 30 game-seconds; babies take ~200 game-seconds to grow up
+const TRAITS=[
+  {id:'comfort',name:'Closeness',lv:['Keep a wide berth','Rest a little closer and wave hello','Work better side by side (+20% near a friend)','Huddle together at the vent (+35% near a friend)']},
+  {id:'strong',name:'Strong arms',lv:['Ordinary tentacles','Gather and build 15% faster','30% faster','45% faster']},
+  {id:'thrifty',name:'Slow metabolism',lv:['Ordinary appetite','Get hungry 15% slower','30% slower','45% slower']},
+  {id:'swift',name:'Jet swimming',lv:['Ordinary swimmers','Swim 12% faster','24% faster','36% faster']},
+  {id:'nurture',name:'Big clutch',lv:['2-3 babies stay','One more baby stays, and they grow 30% faster','Two more stay, grow 60% faster','Three more stay, grow 90% faster']}
+];
+function tr(id){return(S.traits&&S.traits[id])||0}
+function colonyGen(){return folk.reduce((m,v)=>Math.max(m,v.gen||1),1)}
+function personalSpace(){ // they slowly get used to each other every generation, and Closeness speeds that up a lot
+  return Math.max(.7,2.6*Math.pow(.94,colonyGen()-1)*[1,.7,.48,.3][tr('comfort')])}
 const NAMES=['Coral','Inky','Pip','Nori','Mochi','Squish','Bubbles','Kelpie','Marlo','Tula','Wren','Ziggy','Opal','Brine','Juno','Lumi','Tako','Suki','Moss','Dot','Fig','Rue','Sprat','Cove','Puddle','Ember','Sol','Minnow','Pebble','Tide'];
 const GAME_SPEED=0.5; // octopuses and the hermit crab move at half speed for a chill pace
 
@@ -347,7 +368,7 @@ function fbm(r,cell){const a=vnoise(r,cell),b=vnoise(r,cell/2);return(x,y)=>a(x,
 
 function newGame(seed){
   S={seed:seed??(rnd()*1e9|0),ground:new Uint8Array(N),obj:new Uint8Array(N),hp:new Uint8Array(N),timer:new Float32Array(N),varr:new Uint8Array(N),
-    bmap:new Int16Array(N),buildings:[],res:{wood:0,stone:0,copper:0,coal:0,fish:0,meal:8},step:0,cooked:0};
+    bmap:new Int16Array(N),buildings:[],res:{wood:0,stone:0,copper:0,coal:0,fish:0,meal:8},step:0,cooked:0,traits:{},points:0};
   genMap();addBuilding('fire',W/2-1,H/2-1,true);
   folk=[];['f','m','f','m','f'].forEach((sx,k)=>spawnFolk(k===0,'idle',100,{sex:sx}));
   resetActors();centerOnFire();
@@ -405,7 +426,7 @@ function spawnFolk(isSummer,job='idle',food=100,o={}){
   const c=FOLK[(folk.length-1+FOLK.length)%FOLK.length],col=o.col||(isSummer?SUMMER_COL:c);
   const v={id:nextId++,summer:isSummer,job,food,x:spot.x+.5,y:spot.y+.65,path:[],state:'rest',task:null,carry:null,hitT:0,fishT:0,catch:0,cooking:false,
     think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,col,spr:isSummer&&!o.col?SUMMER:charSprites(octoPal(col)),
-    name:o.name||(isSummer?'Summer':pickName()),sex:o.sex||(rnd()<.5?'f':'m'),size:o.size??1};
+    name:o.name||(isSummer?'Summer':pickName()),sex:o.sex||(rnd()<.5?'f':'m'),size:o.size??1,gen:o.gen||1,greetT:0};
   folk.push(v);return v;
 }
 
@@ -448,7 +469,7 @@ function mix(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16),j=
 let hatchlings=[];
 function startBreeding(f,m){
   const b=denFor(f);if(!b||S.res.meal<BREED_MEALS)return false;
-  S.res.meal-=BREED_MEALS;b.owner=f.id;b.eggs={mother:f.id,fcol:m.col,fname:m.name,t:0,stage:'wait'};S.bred=(S.bred||0)+1;
+  S.res.meal-=BREED_MEALS;b.owner=f.id;b.eggs={mother:f.id,fcol:m.col,fname:m.name,t:0,stage:'wait',gen:Math.max(f.gen||1,m.gen||1)+1};S.bred=(S.bred||0)+1;
   for(const v of[f,m]){if(v.carry){for(const[k,a]of Object.entries(v.carry))S.res[k]+=a;v.carry=null}if(v.cooking){S.res.fish++;v.cooking=false}v.task=null}
   f.job='idle';f.state='toDen';if(!goDen(f,b)){f.state='brood';b.eggs.stage='brood'}
   m.state='toMate';m.mateDen=b;if(!goDen(m,b))m.state='idle';
@@ -456,14 +477,15 @@ function startBreeding(f,m){
 }
 function hatch(b){
   const e=b.eggs,mom=folk.find(v=>v.id===e.mother),mcol=mom?mom.col:FOLK[0],ex=b.x*T+16,ey=(b.y+b.h)*T-6,mname=mom?mom.name:'Mama';
-  const n=10+(rnd()*6|0),stay=2+(rnd()<.5?1:0);
+  const n=10+(rnd()*6|0),stay=2+(rnd()<.5?1:0)+tr('nurture'),gen=e.gen||2;
   for(let k=0;k<n;k++){const a=rnd()*6.28,sp=5+rnd()*6;
     hatchlings.push({x:ex,y:ey,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.6+3,t:0,stay:k<stay,idx:k,
-      life:k<stay?10.5+k*3.5:16+rnd()*8,col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
+      life:k<stay?10.5+k*3.5:16+rnd()*8,gen,col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
   if(mom){folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
   addFloat(ex,ey-26,n+' little ones hatched!',null,'#fff6c8',3.5);
   after(3.2,()=>addFloat(ex,ey-26,mname+' rests now',null,'#ffd9e6',4));
   after(6.5,()=>addFloat(ex,ey-26,stay+' of them will stay',null,'#fff6c8',3.5));
+  S.points=(S.points||0)+1;after(10.5+stay*3.5+2,()=>{addFloat(ex,ey-26,'Generation '+gen+'! Pick a trait to evolve',null,'#ffd166',4);snoozeUntil=0;hud()});
   if(AC&&!muted)[784,659,523,659,784,1047].forEach((f,k)=>tone(f,f,.22,'sine',.035,k*.2));
   b.eggs=null;b.owner=null;hud();
 }
@@ -471,7 +493,7 @@ function updHatch(dt){
   for(const h of hatchlings){h.t+=dt;h.ph+=dt;
     if(h.stay){const k=Math.pow(.5,dt);h.vx*=k;h.vy*=k}else{h.vy-=dt*1.2;h.vx*=1+dt*.06}
     h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
-    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
+    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
       addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);if(onScreen(nv))sfx('pop');h.dead=true;hud()}
     else if(!h.stay&&h.t>=h.life)h.dead=true}
   hatchlings=hatchlings.filter(h=>!h.dead);
@@ -507,7 +529,7 @@ function hitTile(i,who){
 }
 
 // ================= villagers =================
-function drain(v,a){v.food=Math.max(0,v.food-a)}
+function drain(v,a){v.food=Math.max(0,v.food-a*(1-.15*tr('thrifty')))}
 function taskValid(v,t){
   if(!t)return false;
   switch(t.kind){
@@ -543,10 +565,10 @@ function planDeliver(v){const r=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:nul
 function goEat(v){const r=bfs(tileOf(v),i=>forN8(i,n=>isDrop(bAt(n))?1:null));if(!r)return false;v.path=r.path;v.state='toEat';return true}
 function othersSpots(v){return folk.filter(o=>o!==v).map(o=>(o.state==='rest'||o.state==='toRest')&&o.restSpot?o.restSpot:{x:o.x,y:o.y})}
 function nearestOther(v,x,y,spots=othersSpots(v)){let m=99;for(const o of spots)m=Math.min(m,Math.hypot(o.x-x,o.y-y));return m}
-function goRest(v){ // pick a spot near the vent that's as far from everyone else as possible
-  const f=fire(),cx=f.x+1,cy=f.y+1,spots=othersSpots(v);let best=null,bs=-1;
-  for(let k=0;k<28;k++){const a=rnd()*6.28,d=3+rnd()*4.5,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(!walkXY(x,y))continue;
-    const md=nearestOther(v,x+.5,y+.65,spots);if(md>bs){bs=md;best={x,y}}}
+function goRest(v){ // pick a resting spot near the vent that respects everyone's personal space
+  const f=fire(),cx=f.x+1,cy=f.y+1,spots=othersSpots(v),sp=personalSpace(),shy=sp>=2.5,huddle=tr('comfort')>=3;let best=null,bs=-1e9;
+  for(let k=0;k<28;k++){const a=rnd()*6.28,d=(huddle?2.2:3)+rnd()*(huddle?2:4.5),x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d);if(!walkXY(x,y))continue;
+    const md=nearestOther(v,x+.5,y+.65,spots),score=shy?md:md<sp?md-100:-(md-sp);if(score>bs){bs=score;best={x,y}}}
   if(best){const t=best.y*W+best.x,r=bfs(tileOf(v),i=>i===t?1:null);if(r){v.path=r.path;v.state='toRest';v.restSpot={x:best.x+.5,y:best.y+.65};return}}
   v.state='rest';v.restSpot={x:v.x,y:v.y};
 }
@@ -562,19 +584,20 @@ function think(v){
     if(v.job==='cook'&&S.res.fish>0&&goCook(v))return;
   }
   if(v.state==='idle')goRest(v);
-  else{const f=fire();if(nearestOther(v,v.x,v.y)<2.6||Math.abs(v.x-(f.x+1))+Math.abs(v.y-(f.y+1))>10||rnd()<.015)goRest(v);else if(Math.abs(v.x-f.x-1)>.3)v.face=v.x<f.x+1?1:-1}
+  else{const f=fire();if(nearestOther(v,v.x,v.y)<personalSpace()*.9||Math.abs(v.x-(f.x+1))+Math.abs(v.y-(f.y+1))>10||rnd()<.015)goRest(v);else if(Math.abs(v.x-f.x-1)>.3)v.face=v.x<f.x+1?1:-1}
 }
 function dropTask(v){if(v.cooking){S.res.fish++;v.cooking=false}v.task=null;v.path=[];v.state='idle';v.think=0}
 function updFolk(v,dt){
   if(v.state==='brood')return;
   v.anim+=dt;
-  if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
-  const work=(hasBench()?1.5:1)*(v.food<=0?.5:1),st=v.state;
+  if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*(1+.3*tr('nurture'))*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
+  let work=(hasBench()?1.5:1)*(v.food<=0?.5:1)*(1+.15*tr('strong'));const st=v.state;
+  if(st==='work'&&tr('comfort')>=2&&folk.some(o=>o!==v&&o.state==='work'&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<4))work*=tr('comfort')>=3?1.35:1.2;
   if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
   v.restT=0;
   if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'){
     if(st==='go'&&!taskValid(v,v.task)){dropTask(v);return}
-    const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size));drain(v,Math.hypot(v.x-ox,v.y-oy)*.15*v.size);
+    const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size)*(1+.12*tr('swift')));drain(v,Math.hypot(v.x-ox,v.y-oy)*.15*v.size);
     if(st==='toDen'||st==='toMate'){const b=st==='toDen'?denOf(v):v.mateDen;
       if(!b||b.removed){v.state='idle';v.think=.2;return}
       if(r==='blocked'){if(!goDen(v,b)){if(st==='toDen'){v.state='brood';if(b.eggs)b.eggs.stage='brood'}else v.state='idle'}return}
@@ -864,6 +887,7 @@ function hud(){
   const jf=document.getElementById('jfoot'),warn=hungry?`${hungry} starving!`:low&&S.res.meal+S.res.fish===0?'No food left':'';
   jf.textContent=warn||((idle?`${idle} idle`:'Everyone is busy')+(growing?` · ${growing} growing`:''));jf.classList.toggle('bad',!!warn);
   renderInfo();checkBreedNote();
+  document.getElementById('evoT').textContent='Evolution \u00b7 Gen '+colonyGen();const ep=document.getElementById('evoP');ep.hidden=!(S.points>0);ep.textContent=S.points||0;
   if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
     b.querySelector('.cost').classList.toggle('bad',!afford(d.cost));b.disabled=!!(d.once&&count(id,false))});
 }
@@ -876,7 +900,7 @@ function renderInfo(){
   infoEl.hidden=false;const jobName=j=>({chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook',idle:'Idle'})[j]||j;
   if(sel.v){const v=sel.v,d=denOf(v),sx=v.sex==='f'?'\u2640':'\u2642',e=d&&d.eggs;
     let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job);
-    infoEl.innerHTML=`<div class="nm"><span class="sw" style="background:${v.col}"></span>${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span></div><div>${st}</div>`+
+    infoEl.innerHTML=`<div class="nm"><span class="sw" style="background:${v.col}"></span>${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span></div><div>Generation ${v.gen||1}</div><div>${st}</div>`+
       `<div>Food</div><div class="fbar"><i style="width:${Math.round(v.food)}%"></i></div>`+
       `<div>${d?'Has a den (outlined)':!adult(v)?'Too young for a den':v.sex==='m'?'Males roam free, no den':'No den yet'}</div>`+(d?`<button class="mb" id="infoGo">Show den</button>`:'');
   }else{const b=sel.b,o=ownerOf(b),e=b.eggs;
@@ -898,9 +922,34 @@ const noteEl=document.getElementById('note'),pickEl=document.getElementById('pic
 let snoozeUntil=0,pickSel={f:null,m:null};
 function breedReady(){if(S.res.meal<BREED_MEALS)return false;const ad=folk.filter(v=>adult(v)&&!breeding(v));
   return ad.some(v=>v.sex==='m')&&ad.some(v=>v.sex==='f'&&denFor(v))}
-function checkBreedNote(){const show=breedReady()&&time>snoozeUntil&&pickEl.hidden;noteEl.hidden=!show;document.body.classList.toggle('noted',show)}
+function checkBreedNote(){
+  const evo=(S.points||0)>0&&evoEl.hidden&&time>snoozeUntil,br=!evo&&breedReady()&&time>snoozeUntil&&pickEl.hidden&&evoEl.hidden,show=evo||br;
+  noteEl.dataset.k=evo?'evo':'breed';
+  noteEl.querySelector('span').textContent=evo?`A new generation! You have ${S.points} evolution point${S.points>1?'s':''} to spend.`:"A den is ready and there's food to spare. Start a family?";
+  document.getElementById('noteGo').textContent=evo?'Evolve':'Choose parents';
+  noteEl.hidden=!show;document.body.classList.toggle('noted',show)}
 document.getElementById('noteLater').onclick=()=>{snoozeUntil=time+120;checkBreedNote()};
-document.getElementById('noteGo').onclick=()=>{ensureAudio();pickSel={f:null,m:null};pickEl.hidden=false;renderPick();checkBreedNote()};
+document.getElementById('noteGo').onclick=()=>{ensureAudio();if(noteEl.dataset.k==='evo'){openEvo();return}pickSel={f:null,m:null};pickEl.hidden=false;renderPick();checkBreedNote()};
+// ----- evolution -----
+const evoEl=document.getElementById('evo'),evoBox=document.getElementById('evoBox');
+function openEvo(){evoEl.hidden=false;renderEvo();checkBreedNote()}
+function renderEvo(){
+  const pts=S.points||0;
+  evoBox.innerHTML=`<h2 style="font-size:10px;margin:0">Evolution</h2><div>Generation ${colonyGen()} \u00b7 ${pts} point${pts===1?'':'s'} to spend. Every hatch earns one.</div>`+
+    `<div style="color:var(--muted)">With each generation your octopuses get a little more used to each other. Closeness speeds that up.</div>`+
+    TRAITS.map(t=>{const l=tr(t.id),max=t.lv.length-1;return`<div class="trait"><b>${t.name}</b><span class="pips">${'\u25a0'.repeat(l)}${'\u25a1'.repeat(max-l)}</span>`+
+      `<span class="now">Now: ${t.lv[l]}</span><span class="next">${l<max?'Next: '+t.lv[l+1]:'Fully evolved'}</span>`+
+      `<button class="mb" data-t="${t.id}"${pts>0&&l<max?'':' disabled'}>Evolve</button></div>`}).join('')+
+    `<div class="mrow"><button class="mb" id="evoClose">Done</button></div>`;
+}
+evoBox.addEventListener('click',e=>{
+  const b=e.target.closest('[data-t]');if(b&&!b.disabled&&(S.points||0)>0){const id=b.dataset.t;S.traits=S.traits||{};S.traits[id]=tr(id)+1;S.points--;
+    if(AC&&!muted)[523,659,784,1047,1319].forEach((f,k)=>tone(f,f,.12,'triangle',.04,k*.08));
+    const f=fire();addFloat((f.x+1)*T,f.y*T-14,TRAITS.find(t=>t.id===id).name+' evolved!',null,'#ffd166',3.5);renderEvo();hud();
+    for(const v of folk)if(v.state==='rest')v.think=rnd()*2;return}
+  if(e.target.id==='evoClose'){evoEl.hidden=true;checkBreedNote()}
+});
+document.getElementById('evoB').onclick=()=>{ensureAudio();openEvo()};
 function renderPick(){
   const ad=folk.filter(v=>adult(v)&&!breeding(v)),row=v=>{const dis=v.sex==='f'&&!denFor(v),on=pickSel.f===v||pickSel.m===v;
     return`<button class="prow${on?' on':''}" data-id="${v.id}"${dis?' disabled':''}><span class="sw" style="background:${v.col}"></span>${v.name} ${v.sex==='f'?'\u2640':'\u2642'}<small>${dis?'no free den':v.sex==='f'?(denOf(v)?'has a den':'will take a free den'):''}</small></button>`};
@@ -937,20 +986,20 @@ function checkHint(){
 // ================= save / load =================
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
-  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,
-  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0})),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,traits:S.traits||{},points:S.points||0,
+  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
-    b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1)}:null])}))}catch(e){}}
+    b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
-    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0};
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,traits:d.traits||{},points:d.points||0};
   const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
   list.forEach((e,k)=>{if(Array.isArray(e))spawnFolk(k===0,e[0],e[1],{sex:sexes[k%5]});
-    else spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y})});
+    else spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1})});
   for(const[b,ow,eg]of pend){if(ow!=null&&ow>=0&&folk[ow])b.owner=folk[ow].id;
-    if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood'};m.state='brood';m.job='idle'}}
+    if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2};m.state='brood';m.job='idle'}}
   resetActors();if(d.cam){cam.x=d.cam[0];cam.y=d.cam[1];clampCam()}else centerOnFire();return true}catch(e){return false}}
 addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 addEventListener('pagehide',save);
@@ -984,7 +1033,10 @@ function update(dt){
   // once a second: rubble settles (nothing grows back), hints, hud
   tick+=dt;if(tick>=1){tick-=1;
     for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
-    claimDens();checkHint();hintT++;hud()}
+    claimDens();checkHint();hintT++;hud();
+    if(tr('comfort')>=1)for(const a of folk)for(const c of folk){if(a.id>=c.id||a.state==='brood'||c.state==='brood')continue;
+      if(time>a.greetT&&time>c.greetT&&Math.hypot(a.x-c.x,a.y-c.y)<1.6){a.greetT=c.greetT=time+25+rnd()*20;
+        if(onScreen(a))for(const o of[a,c])parts.push({x:o.x*T,y:o.y*T-18*o.size,vx:(rnd()-.5)*6,vy:-12,g:0,life:1.4,max:1.4,heart:true})}}}
   miniT+=dt;if(miniT>.4){miniT=0;drawMini()}
   saveT+=dt;if(saveT>5){saveT=0;save()}
 }
