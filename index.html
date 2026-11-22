@@ -1276,18 +1276,19 @@ const eelEl=document.createElement('div');eelEl.id='eel';eelEl.className='panel'
 eelEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;width:max-content;max-width:min(420px,calc(100% - 32px));padding:8px 10px;font-size:8px;line-height:1.8;text-align:center;border-color:#a83426;z-index:5';
 document.body.appendChild(eelEl);eelEl.style.cursor='pointer';eelEl.onclick=()=>{eelShowAt=Math.min(eelShowAt,time-8);eelRender()};
 const eelCss=document.createElement('style');eelCss.textContent='body.eel #hint,body.eel #note{display:none!important}body.tray #eel{bottom:166px!important}';document.head.appendChild(eelCss);
+function grownUps(){return folk.filter(adult).length} // babies hide in the sand, so only grown-ups need a den
 function eelRumble(){if(!AC||muted)return;try{tone(70,38,2.8,'triangle',.07);tone(48,30,2.8,'sawtooth',.03);for(let k=0;k<6;k++)after(k*.45,()=>{if(AC&&!muted)noise(.3,220,.12)})}catch(e){}}
 function eelRender(){
   const on=S.eel===1&&time>=eelShowAt,big=on&&time<eelShowAt+7&&tray.hidden;eelEl.hidden=!on;eelEl.classList.toggle('compact',on&&!big);document.body.classList.toggle('eel',big);document.body.classList.toggle('eelc',on&&!big);
-  if(on)eelEl.innerHTML=big?`<div style="color:#a83426">Eels are lurking nearby! Build a den for everyone!</div><div>Dens: ${count('house')} / ${folk.length}</div>`:`<div style="color:#a83426">Eels nearby!</div><div>Dens: ${count('house')} / ${folk.length}</div>`;
+  if(on)eelEl.innerHTML=big?`<div style="color:#a83426">Eels are lurking nearby! Build a den for everyone!</div><div>Dens: ${count('house')} / ${grownUps()}</div>`:`<div style="color:#a83426">Eels nearby!</div><div>Dens: ${count('house')} / ${grownUps()}</div>`;
 }
 function eelStep(){
   if(S.eel===undefined)S.eel=0;
   if(S.arriving){if(folk.some(o=>o.arr)){eelRender();return}S.arriving=false} // the eel countdown starts once everyone has found each other
   if(S.eel===0){if(S.eelAt===undefined)S.eelAt=time+30;
-    if(time>=S.eelAt){if(count('house')>=folk.length)S.eel=2;else{S.eel=1;eelShowAt=time+1.6;rumbleT=3;freezeT=3.2;eelRumble();after(1.7,eelRender)}}}
-  else if(S.eel===1&&count('house')>=folk.length){S.eel=2;sfx('done');const f=fire();addFloat((f.x+1)*T,f.y*T-14,'Everyone has a den! Eels cannot reach you inside',null,'#fff6c8',4.5)}
-  else if(S.eel===2&&count('house')<folk.length){S.eel=1;eelShowAt=time}
+    if(time>=S.eelAt){if(count('house')>=grownUps())S.eel=2;else{S.eel=1;eelShowAt=time+1.6;rumbleT=3;freezeT=3.2;eelRumble();after(1.7,eelRender)}}}
+  else if(S.eel===1&&count('house')>=grownUps()){S.eel=2;sfx('done');const f=fire();addFloat((f.x+1)*T,f.y*T-14,'Everyone has a den! Eels cannot reach you inside',null,'#fff6c8',4.5)}
+  else if(S.eel===2&&count('house')<grownUps()){S.eel=1;eelShowAt=time}
   if(S.eel>=1){if(!eelNext)eelNext=time+180;if(time>=eelNext&&!eels.length&&freezeT<=0){eelNext=time+180+rnd()*60;eelAttack()}}else eelNext=0;
   eelRender();
 }
