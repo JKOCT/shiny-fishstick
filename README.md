@@ -9,6 +9,7 @@ Open `index.html` in a browser. No build step.
 - **Nothing grows back:** octopuses roam further as the seafloor is cleared. Shell mounds sometimes hide pearls or sea glass
 - **Family:** every octopus has a name, and each female claims a den of her own (males roam free). Tap an octopus or den to see who lives where. With a free den and 10 meals, pick a mother and father: she guards her eggs and passes on when 10-15 babies hatch. 2-3 stay and slowly grow up
 - **Evolution:** every hatch earns a point to spend on a trait the colony carries forward: Closeness, Strong arms, Slow metabolism, Jet swimming or Big clutch. Octopuses also slowly get used to each other with every generation
+- **Multicolored octopuses:** any baby has a 2% chance to hatch with colorful spots. It's recessive: if both parents are multicolored, each baby gets an extra 15%
 - **Build:** Den, Clam cache (extra drop-off), Tool rock (faster work), Crab shell (a nap spot for the hermit crab) and pebble Paths
 - **Look around:** drag with Look, right-drag, WASD / arrows, two fingers, or tap the minimap. Zoom with wheel, pinch or the menu
 - **Hermit crab:** tap it with Look for a happy claw wave

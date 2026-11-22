@@ -220,6 +220,12 @@ const OCTO_A=OCTO_TOP.concat(["..kdDkdDkdDkdDk.",".kdk.kdk.kdk.kdk",".kk..kk..kk
 const OCTO_B=OCTO_TOP.concat(["..kdDkdDkdDkdDk.","..kdk.kdk.kdk.kd","...kk..kk..kk.kk"]);
 function charSprites(pal){return[sprite(OCTO_A,20,pal),sprite(OCTO_B,20,pal)]}
 function octoPal(c){return{...PAL,d:c,D:shade(c,.75),L:shade(c,1.3),m:shade(c,.5)}}
+const MULTI_CHANCE=.02, MULTI_BOTH=.15; // any baby: 2%; both parents multicoloured: +15%
+const SPOTS=[[5,2,'1'],[6,2,'1'],[10,3,'2'],[10,4,'2'],[4,4,'2'],[4,5,'2'],[8,4,'1'],[11,5,'1'],[7,9,'2'],[8,9,'2'],[4,9,'1'],[11,9,'1'],[3,10,'2'],[6,10,'1'],[9,10,'2'],[12,10,'1'],[2,11,'1'],[6,11,'2'],[10,11,'1'],[14,11,'2']];
+function multiSprites(c,c2,c3){const pal={...octoPal(c),'1':c2,'2':c3},only=['d','D','L'];
+  return[sprite(setPx(OCTO_A,SPOTS.map(p=>[...p,only])),20,pal),sprite(setPx(OCTO_B,SPOTS.map(p=>[...p,only])),20,pal)]}
+function vivid(){const h=rnd()*360,s=.75,l=.62,k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));
+  return'#'+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('')}
 const SUMMER_COL='#f28c4a';
 const SUMMER=charSprites(octoPal(SUMMER_COL));
 
@@ -425,7 +431,8 @@ function spawnFolk(isSummer,job='idle',food=100,o={}){
     if(!spot)spot={x:cx,y:cy+1}}
   const c=FOLK[(folk.length-1+FOLK.length)%FOLK.length],col=o.col||(isSummer?SUMMER_COL:c);
   const v={id:nextId++,summer:isSummer,job,food,x:spot.x+.5,y:spot.y+.65,path:[],state:'rest',task:null,carry:null,hitT:0,fishT:0,catch:0,cooking:false,
-    think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,col,spr:isSummer&&!o.col?SUMMER:charSprites(octoPal(col)),
+    think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,col,spr:o.multi?multiSprites(col,o.col2,o.col3):isSummer&&!o.col?SUMMER:charSprites(octoPal(col)),
+    multi:!!o.multi,col2:o.col2||null,col3:o.col3||null,
     name:o.name||(isSummer?'Summer':pickName()),sex:o.sex||(rnd()<.5?'f':'m'),size:o.size??1,gen:o.gen||1,greetT:0};
   folk.push(v);return v;
 }
@@ -469,22 +476,24 @@ function mix(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16),j=
 let hatchlings=[];
 function startBreeding(f,m){
   const b=denFor(f);if(!b||S.res.meal<BREED_MEALS)return false;
-  S.res.meal-=BREED_MEALS;b.owner=f.id;b.eggs={mother:f.id,fcol:m.col,fname:m.name,t:0,stage:'wait',gen:Math.max(f.gen||1,m.gen||1)+1};S.bred=(S.bred||0)+1;
+  S.res.meal-=BREED_MEALS;b.owner=f.id;b.eggs={mother:f.id,fcol:m.col,fname:m.name,mm:!!f.multi,fm:!!m.multi,t:0,stage:'wait',gen:Math.max(f.gen||1,m.gen||1)+1};S.bred=(S.bred||0)+1;
   for(const v of[f,m]){if(v.carry){for(const[k,a]of Object.entries(v.carry))S.res[k]+=a;v.carry=null}if(v.cooking){S.res.fish++;v.cooking=false}v.task=null}
   f.job='idle';f.state='toDen';if(!goDen(f,b)){f.state='brood';b.eggs.stage='brood'}
   m.state='toMate';m.mateDen=b;if(!goDen(m,b))m.state='idle';
   sfx('place');hud();return true;
 }
+function babyLook(e){const p=MULTI_CHANCE+(e.mm&&e.fm?MULTI_BOTH:0);return rnd()<p?{multi:true,col2:vivid(),col3:vivid()}:{multi:false}}
 function hatch(b){
   const e=b.eggs,mom=folk.find(v=>v.id===e.mother),mcol=mom?mom.col:FOLK[0],ex=b.x*T+16,ey=(b.y+b.h)*T-6,mname=mom?mom.name:'Mama';
   const n=10+(rnd()*6|0),stay=2+(rnd()<.5?1:0)+tr('nurture'),gen=e.gen||2;
   for(let k=0;k<n;k++){const a=rnd()*6.28,sp=5+rnd()*6;
     hatchlings.push({x:ex,y:ey,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.6+3,t:0,stay:k<stay,idx:k,
-      life:k<stay?10.5+k*3.5:16+rnd()*8,gen,col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
+      life:k<stay?10.5+k*3.5:16+rnd()*8,gen,...babyLook(e),col:mix(mcol,e.fcol,rnd()),door:{x:b.x+.5+(k%2),y:b.y+b.h+.65},ph:rnd()*9})}
   if(mom){folk.splice(folk.indexOf(mom),1);if(sel&&sel.v===mom)select(null)}
   addFloat(ex,ey-26,n+' little ones hatched!',null,'#fff6c8',3.5);
   after(3.2,()=>addFloat(ex,ey-26,mname+' rests now',null,'#ffd9e6',4));
   after(6.5,()=>addFloat(ex,ey-26,stay+' of them will stay',null,'#fff6c8',3.5));
+  const mc=hatchlings.filter(h=>h.stay&&h.multi&&h.t===0).length;if(mc)after(8.5,()=>addFloat(ex,ey-26,mc>1?mc+' multicolored babies!':'A rare multicolored baby!',null,'#ffd166',4));
   S.points=(S.points||0)+1;after(10.5+stay*3.5+2,()=>{addFloat(ex,ey-26,'Generation '+gen+'! Pick a trait to evolve',null,'#ffd166',4);snoozeUntil=0;hud()});
   if(AC&&!muted)[784,659,523,659,784,1047].forEach((f,k)=>tone(f,f,.22,'sine',.035,k*.2));
   b.eggs=null;b.owner=null;hud();
@@ -493,7 +502,7 @@ function updHatch(dt){
   for(const h of hatchlings){h.t+=dt;h.ph+=dt;
     if(h.stay){const k=Math.pow(.5,dt);h.vx*=k;h.vy*=k}else{h.vy-=dt*1.2;h.vx*=1+dt*.06}
     h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
-    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
+    if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen,multi:h.multi,col2:h.col2,col3:h.col3});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
       addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);if(onScreen(nv))sfx('pop');h.dead=true;hud()}
     else if(!h.stay&&h.t>=h.life)h.dead=true}
   hatchlings=hatchlings.filter(h=>!h.dead);
@@ -894,13 +903,14 @@ function hud(){
 // ----- info card: tap an octopus or a den -----
 let sel=null;
 const infoEl=document.getElementById('info');
+function swatch(v){return v.multi?`<span class="sw" style="background:linear-gradient(135deg,${v.col} 0 40%,${v.col2} 40% 70%,${v.col3} 70%)"></span>`:`<span class="sw" style="background:${v.col}"></span>`}
 function select(x){sel=x;if(x)S.tapped=1;renderInfo()}
 function renderInfo(){
   if(!sel||(sel.v&&!folk.includes(sel.v))||(sel.b&&(sel.b.removed||!sel.b.done))){sel=null;infoEl.hidden=true;return}
   infoEl.hidden=false;const jobName=j=>({chop:'Algae',mine:'Shells',fish:'Mussels',cook:'Cook',idle:'Idle'})[j]||j;
   if(sel.v){const v=sel.v,d=denOf(v),sx=v.sex==='f'?'\u2640':'\u2642',e=d&&d.eggs;
     let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job);
-    infoEl.innerHTML=`<div class="nm"><span class="sw" style="background:${v.col}"></span>${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span></div><div>Generation ${v.gen||1}</div><div>${st}</div>`+
+    infoEl.innerHTML=`<div class="nm">${swatch(v)}${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span></div><div>Generation ${v.gen||1}${v.multi?' \u00b7 <b style="color:#b5791a">Multicolored</b>':''}</div><div>${st}</div>`+
       `<div>Food</div><div class="fbar"><i style="width:${Math.round(v.food)}%"></i></div>`+
       `<div>${d?'Has a den (outlined)':!adult(v)?'Too young for a den':v.sex==='m'?'Males roam free, no den':'No den yet'}</div>`+(d?`<button class="mb" id="infoGo">Show den</button>`:'');
   }else{const b=sel.b,o=ownerOf(b),e=b.eggs;
@@ -952,10 +962,10 @@ evoBox.addEventListener('click',e=>{
 document.getElementById('evoB').onclick=()=>{ensureAudio();openEvo()};
 function renderPick(){
   const ad=folk.filter(v=>adult(v)&&!breeding(v)),row=v=>{const dis=v.sex==='f'&&!denFor(v),on=pickSel.f===v||pickSel.m===v;
-    return`<button class="prow${on?' on':''}" data-id="${v.id}"${dis?' disabled':''}><span class="sw" style="background:${v.col}"></span>${v.name} ${v.sex==='f'?'\u2640':'\u2642'}<small>${dis?'no free den':v.sex==='f'?(denOf(v)?'has a den':'will take a free den'):''}</small></button>`};
+    return`<button class="prow${on?' on':''}" data-id="${v.id}"${dis?' disabled':''}>${swatch(v)}${v.name}${v.multi?' \u2605':''} ${v.sex==='f'?'\u2640':'\u2642'}<small>${dis?'no free den':v.sex==='f'?(denOf(v)?'has a den':'will take a free den'):''}</small></button>`};
   pickBox.innerHTML=`<h2>Choose parents</h2><div>Pick one mother \u2640 and one father \u2642.</div>`+
     `<div>Mothers</div>`+ad.filter(v=>v.sex==='f').map(row).join('')+`<div>Fathers</div>`+ad.filter(v=>v.sex==='m').map(row).join('')+
-    `<div class="warn">The mother will guard her eggs in her den and will not survive once they hatch. This uses ${BREED_MEALS} meals.</div>`+
+    `<div style="color:var(--muted)">\u2605 Multicolored is rare and recessive: if both parents have it, each baby has a much better chance.</div><div class="warn">The mother will guard her eggs in her den and will not survive once they hatch. This uses ${BREED_MEALS} meals.</div>`+
     `<div class="mrow"><button class="mb" id="pickGo"${pickSel.f&&pickSel.m?'':' disabled'}>Lay eggs</button><button class="mb" id="pickNo">Cancel</button></div>`;
 }
 pickBox.addEventListener('click',e=>{
@@ -987,9 +997,9 @@ function checkHint(){
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
   timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,traits:S.traits||{},points:S.points||0,
-  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1})),
+  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
-    b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2}:null])}))}catch(e){}}
+    b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
     bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,traits:d.traits||{},points:d.points||0};
@@ -997,9 +1007,9 @@ function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
   list.forEach((e,k)=>{if(Array.isArray(e))spawnFolk(k===0,e[0],e[1],{sex:sexes[k%5]});
-    else spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1})});
+    else spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1,multi:!!e.mu,col2:e.mu?e.mu[0]:null,col3:e.mu?e.mu[1]:null})});
   for(const[b,ow,eg]of pend){if(ow!=null&&ow>=0&&folk[ow])b.owner=folk[ow].id;
-    if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2};m.state='brood';m.job='idle'}}
+    if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2,mm:!!eg.mm,fm:!!eg.fm};m.state='brood';m.job='idle'}}
   resetActors();if(d.cam){cam.x=d.cam[0];cam.y=d.cam[1];clampCam()}else centerOnFire();return true}catch(e){return false}}
 addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 addEventListener('pagehide',save);
@@ -1163,7 +1173,7 @@ function drawFolk(v){
 function drawHatch(h){ // a teeny hatchling
   const a=h.stay?1:Math.max(0,Math.min(1,(h.life-h.t)/6)),x=Math.round(h.x),y=Math.round(h.y),w=(h.ph*6|0)%2;
   ctx.globalAlpha=a;ctx.fillStyle=INK;ctx.fillRect(x-2,y-5,5,4);ctx.fillRect(x-2,y-1,1,2-w);ctx.fillRect(x,y-1,1,1+w);ctx.fillRect(x+2,y-1,1,2-w);
-  ctx.fillStyle=h.col;ctx.fillRect(x-1,y-4,3,2);ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-3,1,1);ctx.fillRect(x+1,y-3,1,1);ctx.globalAlpha=1;
+  ctx.fillStyle=h.col;ctx.fillRect(x-1,y-4,3,2);if(h.multi){ctx.fillStyle=h.col2;ctx.fillRect(x-1,y-4,1,1);ctx.fillStyle=h.col3;ctx.fillRect(x+1,y-4,1,1)}ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-3,1,1);ctx.fillRect(x+1,y-3,1,1);ctx.globalAlpha=1;
 }
 function drawSelection(){ // outline the selected octopus and their den (or a den and its owner)
   if(!sel)return;const v=sel.v||ownerOf(sel.b),b=sel.b||(sel.v&&denOf(sel.v)),blink=.6+.4*Math.sin(time*5);
