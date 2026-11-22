@@ -453,6 +453,7 @@ function babyTraits(e){ // inherit from parents (a focused trait is very likely)
   return[...out];
 }
 const NAMES=['Coral','Inky','Pip','Nori','Mochi','Squish','Bubbles','Kelpie','Marlo','Tula','Wren','Ziggy','Opal','Brine','Juno','Lumi','Tako','Suki','Moss','Dot','Fig','Rue','Sprat','Cove','Puddle','Ember','Sol','Minnow','Pebble','Tide'];
+const FATHER_LIFE=300,MALE_LIFE=[1500,1800],FADE_TIME=60; // real seconds: fathers live ~5 min after mating; males who never father ~25-30 min; the last minute they fade
 const GAME_SPEED=0.5; // octopuses and the hermit crab move at half speed for a chill pace
 
 const BUILD={
@@ -567,6 +568,8 @@ function resetActors(){
   const s=folk[0]||{x:W/2,y:H/2+2};WF.x=s.x+1;WF.y=s.y+.3;WF.state='follow';WF.path=[];
   flies=[];for(let k=0;k<10;k++)flies.push({x:W/2+(rnd()-.5)*30,y:H/2+(rnd()-.5)*20,ph:rnd()*9,col:['#f4d35e','#e8834f','#9ec5ff','#ffffff'][k%4]});
 }
+function natLife(){return MALE_LIFE[0]+rnd()*(MALE_LIFE[1]-MALE_LIFE[0])}
+function fading(v){return v.sex==='m'&&v.lifeLeft!=null&&v.lifeLeft<=FADE_TIME}
 function pickName(){const used=new Set(folk.map(v=>v.name)),free=NAMES.filter(n=>!used.has(n));return free.length?free[rnd()*free.length|0]:'Octo '+nextId}
 function spawnFolk(isSummer,job='idle',food=100,o={}){
   let spot=null;
@@ -579,6 +582,7 @@ function spawnFolk(isSummer,job='idle',food=100,o={}){
     think:rnd(),face:rnd()<.5?1:-1,anim:rnd()*9,restT:0,col,spr:o.multi?multiSprites(col,o.col2,o.col3):isSummer&&!o.col?SUMMER:charSprites(octoPal(col)),
     multi:!!o.multi,col2:o.col2||null,col3:o.col3||null,traits:o.traits||[],xp:Object.assign(newXp(),o.xp||{}),life:o.life||{},mom:o.mom||null,dad:o.dad||null,kids:o.kids||0,
     name:o.name||(isSummer?'Summer':pickName()),sex:o.sex||(rnd()<.5?'f':'m'),size:o.size??1,gen:o.gen||1,greetT:0};
+  v.lifeLeft=o.lifeLeft??null;if(v.sex==='m'&&v.size>=1&&v.lifeLeft==null)v.lifeLeft=natLife();
   folk.push(v);return v;
 }
 
@@ -625,6 +629,7 @@ function startBreeding(f,m,focus){
     mt:[...f.traits],ft:[...m.traits],mx:{...f.xp},fx:{...m.xp},focus:focus||null};S.bred=(S.bred||0)+1;
   for(const v of[f,m]){if(v.carry){for(const[k,a]of Object.entries(v.carry))S.res[k]+=a;v.carry=null}if(v.cooking){S.res.fish++;v.cooking=false}v.task=null}
   dropRake(f);f.job='idle';f.state='toDen';if(!goDen(f,b)){f.state='brood';b.eggs.stage='brood'}
+  m.lifeLeft=Math.min(m.lifeLeft??FATHER_LIFE,FATHER_LIFE);m.fathered=true;
   m.state='toMate';m.mateDen=b;if(!goDen(m,b))m.state='idle';
   sfx('place');hud();return true;
 }
@@ -773,9 +778,9 @@ function updFolk(v,dt){
   if(v.state==='away'){v.awayT-=dt;if(v.awayT<=0){v.hidden=false;v.state='idle';v.think=0;v.carry=exploreLoot();S.explored=(S.explored||0)+1;
     puff(v.x*T,v.y*T-6);addFloat(v.x*T,v.y*T-26,v.name+' is back! They '+TALES[rnd()*TALES.length|0]+'.',null,'#fff6c8',5);if(onScreen(v))sfx('pop');hud()}return}
   v.anim+=dt;
-  if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
+  if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){if(v.sex==='m'&&v.lifeLeft==null)v.lifeLeft=natLife();addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
   drain(v,dt*(.5+.5*v.size)); // everyone gets hungry over time, even when resting
-  let work=(hasBench()?1.5:1)*(v.food<=0?.5:1)*(has(v,'tools')?1+.2*tp(v):1);const st=v.state;
+  let work=(fading(v)?.6:1)*(hasBench()?1.5:1)*(v.food<=0?.5:1)*(has(v,'tools')?1+.2*tp(v):1);const st=v.state;
   if(st==='work'&&v.task){const k=v.task.kind;const jk={tree:'chop',rock:'mine',cook:'cook',fish:'fish'}[k];if(jk)work*=skill(v,jk);if(k==='fish'&&v.rake)work*=1.5;if(k==='cook'&&count('grill'))work*=1.5;
     if(has(v,'social')&&folk.some(o=>o!==v&&o.state==='work'&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<4))work*=1.2}
   if(v.food<=0)v.xp.hungry+=dt;
@@ -783,7 +788,7 @@ function updFolk(v,dt){
   v.restT=0;
   if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'||st==='toEdge'||st==='toRake'){
     if(st==='go'&&!taskValid(v,v.task)){dropTask(v);return}
-    const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size)*(has(v,'swift')?1+.2*tp(v):1));const mv=Math.hypot(v.x-ox,v.y-oy);drain(v,mv*.15*v.size);v.xp.swim+=mv;
+    const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size)*(fading(v)?.7:1)*(has(v,'swift')?1+.2*tp(v):1));const mv=Math.hypot(v.x-ox,v.y-oy);drain(v,mv*.15*v.size);v.xp.swim+=mv;
     if(st==='toDen'||st==='toMate'){const b=st==='toDen'?denOf(v):v.mateDen;
       if(!b||b.removed){v.state='idle';v.think=.2;return}
       if(r==='blocked'){if(!goDen(v,b)){if(st==='toDen'){v.state='brood';if(b.eggs)b.eggs.stage='brood'}else v.state='idle'}return}
@@ -1128,6 +1133,17 @@ function checkQuest(){
   if(AC&&!muted)[523,659,784,1047].forEach((n,k)=>tone(n,n,.14,'triangle',.045,k*.1));
   const nx=QUESTS[S.quest];if(nx)after(2.5,()=>toast('New quest: '+nx.title,4500));else after(2.5,()=>toast('All quests done for now!',4000));
 }
+function ageMales(){ // males fade after fathering (or after a long life); the last grown male waits for a grown son
+  for(const v of[...folk]){if(v.sex!=='m'||v.lifeLeft==null||breeding(v)||v.state==='away'||v.eel)continue;
+    const wasFading=fading(v);v.lifeLeft=Math.max(0,v.lifeLeft-1);
+    if(!wasFading&&fading(v)&&onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' is growing tired...',null,'#d8e0e8',3.5);
+    if(v.lifeLeft>0)continue;
+    if(!folk.some(o=>o!==v&&o.sex==='m'&&adult(o))){if(!v.waitNote){v.waitNote=1;toast(v.name+' is the last grown male. He will hold on until a son grows up.',6000)}continue}
+    dropRake(v);if(sel&&sel.v===v)select(null);
+    puff(v.x*T,v.y*T-6);addFloat(v.x*T,v.y*T-26,v.name+' has drifted away',null,'#d8e0e8',4.5);
+    if(AC&&!muted)[659,587,523,440].forEach((f,k)=>tone(f,f,.25,'sine',.03,k*.22));
+    folk.splice(folk.indexOf(v),1);hud()}
+}
 function maybePiece(v){ // once the secret quest starts, gathering can turn up puzzle pieces
   if((S.quest||0)!==1||(S.pieces||0)>=PIECES||rnd()>=PIECE_CHANCE)return;
   S.pieces=(S.pieces||0)+1;v.life.pieces=(v.life.pieces||0)+1;
@@ -1206,11 +1222,11 @@ function renderInfo(){
   infoEl.classList.toggle('sheet',!!sel.v);document.body.classList.toggle('sheetOpen',!!sel.v);
   if(sel.v){const v=sel.v,d=denOf(v),sx=v.sex==='f'?'\u2640':'\u2642',e=d&&d.eggs,L=v.life||{},x=v.xp||{};
     let st=!adult(v)?`Growing up: ${Math.round(v.size*100)}%`:v.state==='brood'&&e?`Guarding eggs: ${Math.round(e.t/EGG_TIME*100)}%`:breeding(v)?'Heading to the den':'Job: '+jobName(v.job)+(v.rake?' \u00b7 carrying a mussel rake':'');
-    const mood=v.sadUntil>time?'Sad':v.food<=0?'Starving':v.food<HUNGRY_AT?'Hungry':v.state==='rest'?'Relaxing':v.state==='work'?'Busy':v.state==='eat'?'Eating':'Swimming about';
+    const mood=fading(v)?'Fading':v.sadUntil>time?'Sad':v.food<=0?'Starving':v.food<HUNGRY_AT?'Hungry':v.state==='rest'?'Relaxing':v.state==='work'?'Busy':v.state==='eat'?'Eating':'Swimming about';
     const traits=(v.traits||[]).length?(v.traits.map(t=>`<span>${TR[t].icon}</span><span><b>${TR[t].name}</b><br>${TR[t].desc}</span>`).join('')):`<span></span><span>No traits yet. Babies can inherit them or discover new ones.</span>`;
     const row=(k,n)=>n?`<span>${k}</span><span>${n}</span>`:'';
     const stats=row('Algae gathered',L.wood)+row('Shells dug',L.stone)+row('Mussels found',L.fish)+row('Pearls found',L.copper)+row('Sea glass found',L.coal)+
-      row('Meals cooked',L.meals)+row('Pearls polished',L.gem)+row('Distance swum',x.swim>=1?Math.round(x.swim)+' tiles':0)+row('Hellos waved',x.social)+row('Eel attack',v.lost?'Lost a tentacle':0)+row('Times gone hungry',x.hungry>=1?Math.round(x.hungry)+'s':0);
+      row('Meals cooked',L.meals)+row('Pearls polished',L.gem)+row('Father',v.fathered?'Yes, he is in his last days':0)+row('Distance swum',x.swim>=1?Math.round(x.swim)+' tiles':0)+row('Hellos waved',x.social)+row('Eel attack',v.lost?'Lost a tentacle':0)+row('Times gone hungry',x.hungry>=1?Math.round(x.hungry)+'s':0);
     infoEl.innerHTML=`<button id="shClose" aria-label="Close">\u00d7</button>`+
       `<div class="sh-top"><canvas id="portrait" width="16" height="20"></canvas><div><div class="sh-name">${swatch(v)}${v.name} <span title="${v.sex==='f'?'Female':'Male'}">${sx}</span>${v.multi?'<span class="badge">\u2605 Multicolored</span>':''}</div>`+
       `<div class="sh-sub">Generation ${v.gen||1} \u00b7 ${adult(v)?'Adult':'Young'} \u00b7 ${mood}</div><div style="margin-top:4px">${st}</div>`+
@@ -1313,7 +1329,7 @@ function checkHint(){
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
   timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,rakes:S.rakes||0,fe:S.firstEel||0,eT:{at:S.eelAt!=null?Math.max(0,S.eelAt-time):null,fa:S.firstEelAt!=null?Math.max(0,S.firstEelAt-time):null,nx:eelNext?Math.max(0,eelNext-time):null},quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,pol:S.polishTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
-  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,rk:v.rake?1:0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
+  folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,rk:v.rake?1:0,lf:v.lifeLeft==null?null:Math.round(v.lifeLeft),fa:v.fathered?1:0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
     b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0,mt:b.eggs.mt||[],ft:b.eggs.ft||[],mx:b.eggs.mx||{},fx:b.eggs.fx||{},fo:b.eggs.focus||null,mn:b.eggs.mname||null,fn:b.eggs.fname||null}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
@@ -1323,7 +1339,7 @@ function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
   list.forEach((e,k)=>{if(Array.isArray(e))spawnFolk(k===0,e[0],e[1],{sex:sexes[k%5]});
-    else Object.assign(spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1,multi:!!e.mu,col2:e.mu?e.mu[0]:null,col3:e.mu?e.mu[1]:null,traits:e.tr||[BASE_TRAITS[rnd()*BASE_TRAITS.length|0]],xp:e.xp,life:e.li,mom:e.mo,dad:e.da,kids:e.ki}),{lost:e.lt||0,rake:!!e.rk,sadUntil:time+(e.sd||0)})});
+    else Object.assign(spawnFolk(!!e.su,e.j,e.f,{name:e.n,sex:e.s,col:e.su?null:e.c,size:e.z,x:e.x,y:e.y,gen:e.g||1,multi:!!e.mu,col2:e.mu?e.mu[0]:null,col3:e.mu?e.mu[1]:null,traits:e.tr||[BASE_TRAITS[rnd()*BASE_TRAITS.length|0]],xp:e.xp,life:e.li,mom:e.mo,dad:e.da,kids:e.ki}),{lost:e.lt||0,rake:!!e.rk,lifeLeft:e.lf!=null?e.lf:(e.s==='m'&&(e.z??1)>=1?natLife():null),fathered:!!e.fa,sadUntil:time+(e.sd||0)})});
   if(!S.found.length)S.found=[...new Set(folk.flatMap(v=>v.traits))];
   for(const[b,ow,eg]of pend){if(ow!=null&&ow>=0&&folk[ow])b.owner=folk[ow].id;
     if(eg&&folk[eg.m]){const m=folk[eg.m];b.owner=m.id;b.eggs={mother:m.id,fcol:eg.c,t:eg.t,stage:'brood',gen:eg.g||2,mm:!!eg.mm,fm:!!eg.fm,mt:eg.mt||[],ft:eg.ft||[],mx:eg.mx||{},fx:eg.fx||{},focus:eg.fo||null,mname:eg.mn||m.name,fname:eg.fn||null};m.state='brood';m.job='idle'}}
@@ -1502,7 +1518,7 @@ function update(dt){
   tick+=dt;if(tick>=1){tick-=1;
     for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
     S.regrowT=(S.regrowT||0)+1;if(S.regrowT>=300){S.regrowT=0;regrow()}
-    claimDens();checkHint();checkQuest();
+    claimDens();checkHint();checkQuest();ageMales();
     if(S.babyTip&&!S.pearlTip){S.pearlT=(S.pearlT||0)+1;if(S.pearlT>=30){S.pearlTip=1; // about 30s after the first baby: a hint that pearls can be worked on
       const b=folk.find(v=>v.name===S.firstBaby)||folk.find(v=>!adult(v))||folk[0];
       if(b){toast('Hmm... '+b.name+' rubbed the pearl in the sand and made it shinier! What else could we do with these?',9000);if(onScreen(b))parts.push({x:b.x*T,y:b.y*T-18*b.size,vx:0,vy:-10,g:0,life:1.6,max:1.6,col:'#ffffff',sz:2,bub:true})}}}hintT++;eelStep();hud();
@@ -1611,8 +1627,8 @@ function drawFolk(v){
     if(v.face<0){ctx.save();ctx.translate(qx+dw,qy);ctx.scale(-1,1);ctx.drawImage(img,0,0,dw,dh);ctx.restore()}else ctx.drawImage(img,qx,qy,dw,dh);return}
   const px=Math.round(v.x*T-8),py=Math.round(v.y*T)-20+bob;
   ctx.fillStyle='rgba(10,40,60,.25)';ctx.fillRect(px+3,py+19-bob,10,2);ctx.fillRect(px+5,py+21-bob,6,1);
-  const img=sprOf(v,fr);
-  if(v.face<0){ctx.save();ctx.translate(px+16,py);ctx.scale(-1,1);ctx.drawImage(img,0,0);ctx.restore()}else ctx.drawImage(img,px,py);
+  const img=sprOf(v,fr);if(fading(v))ctx.filter='saturate(35%) brightness(92%)';
+  if(v.face<0){ctx.save();ctx.translate(px+16,py);ctx.scale(-1,1);ctx.drawImage(img,0,0);ctx.restore()}else ctx.drawImage(img,px,py);ctx.filter='none';
   if(v.arr){const q=Math.round(Math.sin(time*3+v.id));ctx.font='6px "Press Start 2P", monospace';ctx.textBaseline='middle';ctx.fillStyle=INK;ctx.fillText('?',px+6,py-7+q);ctx.fillStyle='#ffffff';ctx.fillText('?',px+5,py-8+q)}
   const hx=v.face>0?px+14:px+1,hy=py+16;
   if(v.rake&&!(v.state==='work'&&v.task&&v.task.kind==='fish')){const rx=v.face>0?px+1:px+13; // carried on its back, teeth up
