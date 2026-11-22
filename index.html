@@ -20,7 +20,7 @@ button:focus-visible{outline:2px solid #fff;outline-offset:1px}
 .r img{width:18px;height:18px;image-rendering:pixelated}
 .r[hidden]{display:none}
 #jobs{border-top:2px dashed var(--parch2);padding-top:6px;display:flex;flex-direction:column;gap:3px}
-.job{display:grid;grid-template-columns:18px 52px 20px 20px 20px;align-items:center;gap:5px;font-size:8px}
+.job{display:grid;grid-template-columns:18px 62px 20px 20px 20px;align-items:center;gap:5px;font-size:8px}
 .job img{width:18px;height:18px;image-rendering:pixelated}
 .jb{width:20px;height:20px;font-size:10px;padding:0;background:var(--parch);border:2px solid var(--ink);cursor:pointer;line-height:1}
 .jb:active{transform:translateY(1px)}.jb:disabled{opacity:.3;cursor:default}
@@ -76,7 +76,7 @@ body.tray #hint{bottom:166px}
   </div>
   <div id="helptxt">
     <b>Jobs</b>: + and - put your octopuses to work<br>
-    <b>Food</b>: fishers catch fish, cooks bake them at the vent. Hungry octopuses slow down<br>
+    <b>Food</b>: foragers find mussels in the soft sand around boulders, cooks bake them at the vent. Hungry octopuses slow down<br>
     <b>Build</b>: pick a building, tap to place. Octopuses build it<br>
     <b>Look</b>: drag, WASD, two fingers. Wheel or pinch to zoom<br>
     <b>Hermit crab</b>: tap it with Look for a happy claw wave
@@ -243,9 +243,14 @@ const GRASS=[0,1,2,3,4,5].map(n=>tile(x=>{
   if(n===4){const cx=5+RT()*6|0,cy=5+RT()*6|0,c='#e8834f';P1(x,cx,cy,c);P1(x,cx-1,cy,c);P1(x,cx+1,cy,c);P1(x,cx,cy-1,c);P1(x,cx-1,cy+1,c);P1(x,cx+1,cy+1,c);P1(x,cx,cy,'#f6b08a')}
   if(n===5){const cx=4+RT()*8|0,cy=6+RT()*6|0;P1(x,cx,cy,'#4fa38a');P1(x,cx,cy-1,'#4fa38a');P1(x,cx+1,cy-2,'#8fd6b8');P1(x,cx+2,cy,'#4fa38a');P1(x,cx+2,cy-1,'#8fd6b8');P1(x,cx+9>15?cx-3:cx+6,cy+2,'#f2a7b5')}
 }));
-const SAND=tile(x=>{x.fillStyle='#b9ad82';x.fillRect(0,0,16,16);for(let i=0;i<9;i++)P1(x,RT()*16|0,RT()*16|0,RT()<.5?'#a59a72':'#8f9396')});
-const WATER=[0,1].map(f=>tile(x=>{x.fillStyle='#2b5d82';x.fillRect(0,0,16,16);x.fillStyle='#24506f';x.fillRect(3,9,6,3);x.fillRect(11,2,4,2);x.fillStyle='#3a6f96';
-  for(const[a,b]of[[2,3],[9,7],[4,13]]){x.fillRect((a+f*2)%16,b,3,1)}}));
+const SAND=tile(x=>{x.fillStyle='#c2b588';x.fillRect(0,0,16,16);for(let i=0;i<10;i++)P1(x,RT()*16|0,RT()*16|0,RT()<.5?'#ad9f72':'#d3c79c');
+  for(const[a,b]of[[3,4],[11,11]]){x.fillStyle='#1f2638';x.fillRect(a,b,2,1);x.fillStyle='#3b4a6b';x.fillRect(a,b+1,2,1)}});
+const BOULDER_ROWS=["....kkkkkkk.....","..kkAAAaaaakk...",".kAAaaaaaaaank..",".kAaaaaaaaaannk.","kAaaaaaaaaaannk.","kaaaaaaaaaaannnk","kaaaaaaaaaannnnk",
+  "kaaaaaaaaannnnnk","kaaaaaaaannnnnnk","knaaaaaannnnnnnk","knnaaannnnnnnnk.",".knnnnnnnnnnnnk.","..kknnnnnnnnkk..","....kkkkkkkk....",E16,E16];
+const BPAL={...PAL,a:'#8d97a3',A:'#b4bdc7',n:'#66707c',x:'#3b4a6b',X:'#1f2638',z:'#8fa3c8'};
+const MUSSELS=[[9,8,'X'],[10,8,'x'],[10,9,'X'],[11,9,'x'],[12,8,'X'],[11,10,'X'],[3,9,'x'],[4,9,'X'],[4,10,'x'],[5,10,'X'],[7,11,'X'],[8,11,'x']];
+const WATER=[sprite(BOULDER_ROWS,16,BPAL),sprite(setPx(BOULDER_ROWS,MUSSELS),16,BPAL),
+  sprite(setPx(BOULDER_ROWS,MUSSELS.slice(0,6).concat([[4,1,'G'],[5,1,'l'],[5,0,'G'],[8,1,'G'],[8,0,'G'],[9,0,'l']])),16,BPAL)];
 const ROAD=tile(x=>{x.fillStyle='#cfc49a';x.fillRect(0,0,16,16);
   for(let i=0;i<7;i++){const a=1+RT()*12|0,b=1+RT()*12|0,c=['#9fa3a6','#b8bcbf','#7f8589'][i%3];x.fillStyle=c;x.fillRect(a,b,3,2);x.fillStyle='#d8dbdd';x.fillRect(a,b,1,1)}});
 
@@ -283,16 +288,16 @@ const BSPR={
 };
 
 // ---------- food & ore sprites ----------
-ICON.fish=sprite(["....kkkkkk...kk.","..kkqqqqqqk.kqk.",".kqeqqqqqqqkqqk.",".kqqqqqqqqqqqk..","..kQQQQQQQkkQQk.","...kkkkkkk..kk..",E16,E16,E16,E16],16);
+ICON.fish=sprite([E16,E16,E16,".......kkk......",".....kkxxXk.....","....kxzxxXXk....","...kxzxxxXXk....","...kxxxxXXk.....","..kxxxxXXXk.....","..kXxxXXXk......","...kXXXkk.......","....kkk.........",E16,E16,E16,E16],16,{...PAL,x:'#3b4a6b',X:'#1f2638',z:'#8fa3c8'});
 ICON.meal=sprite(["......W..W......",".....W..W.......","....kkkkkkkk....","...kjjjJjjJjk...","..kkkkkkkkkkkk..","..kuuuuuuuuuuk..","...kuUuuuuUuk...","....kkkkkkkk....",E16,E16,E16],16);
 ICON.copper=sprite([E16,E16,E16,"......kkkk......",".....kWWzzk.....","....kWWWzzzk....","....kWzzzzzk....","....kzzzzzAk....",".....kzzAAk.....","......kkkk......",E16,E16,E16,E16,E16,E16],16,{...PAL,A:'#b8b8cc'});
 ICON.coal=sprite([E16,E16,E16,".......kk.......","......kWvk......",".....kWvvvk.....","....kvvvvVVk....","...kvvvvVVk.....","....kVVVVk......",".....kkkk.......",E16,E16,E16,E16,E16,E16],16);
-MINI.fish=sprite(["..kkkk.k",".kqeqqkq","kqqqqqqk",".kQQQQkQ","..kkkk.k"],5,PAL,8);
+MINI.fish=sprite(["..kkkk..",".kzxxXk.","kxxxXXk.",".kXXXk..","..kkk..."],5,{...PAL,x:'#3b4a6b',X:'#1f2638',z:'#8fa3c8'},8);
 MINI.meal=sprite([".kkkkkk.","kjjJjjJk","kkkkkkkk",".kuUuuk.","..kkkk.."],5,PAL,8);
 MINI.copper=sprite(["..kkkk..",".kWWzk..","kWzzzzk.","kzzzzAk.",".kkkkk.."],5,{...PAL,A:'#b8b8cc'},8);
 MINI.coal=sprite(["...kk...","..kWvk..",".kvvVVk.","kvvVVk..",".kkkk..."],5,PAL,8);
-const RES=[['wood','Algae'],['stone','Shells'],['copper','Pearls'],['coal','Sea glass'],['fish','Fish'],['meal','Meals']];
-const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',icon:ICON.stone},{id:'fish',name:'Fish',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal}];
+const RES=[['wood','Algae'],['stone','Shells'],['copper','Pearls'],['coal','Sea glass'],['fish','Mussels'],['meal','Meals']];
+const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',icon:ICON.stone},{id:'fish',name:'Mussels',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal}];
 const ORE_CHANCE=.035, HUNGRY_AT=30;
 const GAME_SPEED=0.5; // octopuses and the hermit crab move at half speed for a chill pace
 
@@ -327,7 +332,7 @@ function genMap(){
   const r=mulberry(S.seed),nf=fbm(r,10),nr=fbm(r,6),nw=fbm(r,15),cx=W/2,cy=H/2;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
     const i=y*W+x,d=Math.hypot(x+.5-cx,(y+.5-cy)*1.2);S.varr[i]=r()*16|0;
-    if(nw(x,y)>0.64&&d>10){S.ground[i]=G_WATER;continue}
+    if(nw(x,y)>0.69&&d>10){S.ground[i]=G_WATER;continue}
     if(d<5)continue;
     const f=nf(x,y),k=nr(x,y);
     if(k>0.655&&r()<0.75)setObj(i,O_ROCK);
@@ -341,11 +346,19 @@ function genMap(){
     for(let y=sy-2;y<=sy+2;y++)for(let x=sx-2;x<=sx+2;x++){if(x<1||y<1||x>=W-1||y>=H-1)continue;const i=y*W+x;
       if(S.ground[i]!==G_WATER&&S.obj[i]===O_NONE&&dist2(i,cx,cy)>36&&r()<.65)setObj(i,kind)}}};
   ensure(O_TREE,15,9);ensure(O_ROCK,8,14);ensure(O_TREE,60,18);
-  // make sure there's water within reach of the camp for fishing
-  let near=false;for(let i=0;i<N&&!near;i++)if(S.ground[i]===G_WATER&&dist2(i,cx,cy)<18*18)near=true;
-  if(!near){const a=r()*6.28,px=Math.round(cx+Math.cos(a)*13),py=Math.round(cy+Math.sin(a)*11);
-    for(let y=py-3;y<=py+3;y++)for(let x=px-4;x<=px+4;x++){if(!inb(x,y))continue;const dd=((x-px)/4.5)**2+((y-py)/3.5)**2,i=y*W+x;
-      if(dd<1){S.ground[i]=G_WATER;S.obj[i]=O_NONE}else if(dd<1.6&&S.ground[i]===G_GRASS){S.ground[i]=G_SAND;if(S.obj[i]===O_TREE)S.obj[i]=O_NONE}}}
+  addBoulders(r);
+}
+function boulderPatch(px,py,rx,ry){
+  for(let y=py-ry-2;y<=py+ry+2;y++)for(let x=px-rx-2;x<=px+rx+2;x++){if(!inb(x,y))continue;const dd=((x-px)/(rx+.5))**2+((y-py)/(ry+.5))**2,i=y*W+x;
+    if(dd<1){S.ground[i]=G_WATER;S.obj[i]=O_NONE}else if(dd<2.2&&S.ground[i]===G_GRASS){S.ground[i]=G_SAND;S.obj[i]=O_NONE}}
+}
+function addBoulders(r){
+  const cx=W/2,cy=H/2;
+  for(let k=0;k<45;k++){const x=2+r()*(W-4)|0,y=2+r()*(H-4)|0;if(Math.hypot(x-cx,(y-cy)*1.2)<10)continue;boulderPatch(x,y,r()*1.6|0,r()*1.3|0)}
+  // a small mussel spot near camp, with a clear lane to it so foragers can start right away
+  const a=r()*6.28,bx=Math.round(cx+Math.cos(a)*8),by=Math.round(cy+Math.sin(a)*7);boulderPatch(bx,by,1,0);
+  for(let t=0;t<=1;t+=.05){const lx=Math.round(cx+(bx-cx)*t),ly=Math.round(cy+(by-cy)*t);
+    for(let y=ly-1;y<=ly+1;y++)for(let x=lx-1;x<=lx+1;x++){if(!inb(x,y))continue;const i=y*W+x;if(S.ground[i]!==G_WATER)S.obj[i]=O_NONE}}
 }
 function setObj(i,o){S.obj[i]=o;S.hp[i]=o===O_TREE?TREE_HP:o===O_ROCK?ROCK_HP:0}
 function dist2(i,cx,cy){const x=i%W+.5,y=(i/W|0)+.5;return(x-cx)**2+(y-cy)**2}
@@ -442,10 +455,11 @@ function findHarvest(v,kind){
   const r=bfs(tileOf(v),i=>forN8(i,n=>S.obj[n]===kind&&!c.has(n)?{kind:name,i:n}:null));
   return r?setTask(v,r):false;
 }
-function findFishing(v){
+function findFishing(v){ // soft sand around boulders hides mussels
   const c=claimed(v,'spot');
-  const r=bfs(tileOf(v),i=>{if(c.has(i))return null;const x=i%W,y=i/W|0;
-    for(const[dx,dy]of[[0,1],[1,0],[-1,0],[0,-1]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.ground[ny*W+nx]===G_WATER)return{kind:'fish',spot:i,w:ny*W+nx}}return null});
+  const r=bfs(tileOf(v),i=>{if(c.has(i)||S.ground[i]!==G_SAND)return null;const x=i%W,y=i/W|0;let w=i;
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.ground[ny*W+nx]===G_WATER){w=ny*W+nx;break}}
+    return{kind:'fish',spot:i,w}});
   return r?setTask(v,r):false;
 }
 function goCook(v){const f=fire();const r=bfs(tileOf(v),i=>forN8(i,n=>bAt(n)===f?{kind:'cook',b:f}:null));return r?setTask(v,r):false}
@@ -504,8 +518,9 @@ function updFolk(v,dt){
 function workFish(v,dt){
   v.hitT+=dt;v.fishT+=dt;
   if(v.hitT>=1.2){v.hitT=0;drain(v,.3);
-    if(rnd()<.22){v.catch++;const w=v.task.w,wx=w%W*T+8,wy=(w/W|0)*T+8;
-      if(onScreen(v)){burst(wx,wy,8,['#ffffff','#bfe3f7','#86b8d8']);sfx('splash');addFloat(wx,wy-10,'+1','fish')}}}
+    if(onScreen(v)&&rnd()<.6)burst(v.x*T+v.face*6,v.y*T-2,3,['#d2c79a','#bfb487']);
+    if(rnd()<.22){v.catch++;
+      if(onScreen(v)){burst(v.x*T+v.face*6,v.y*T-4,8,['#d2c79a','#8fa3c8','#3b4a6b']);sfx('splash');addFloat(v.x*T,v.y*T-26,'+1','fish')}}}
   if(v.catch>=3||(v.fishT>30&&v.catch>0)){v.carry={fish:v.catch};v.catch=0;v.task=null;v.state='idle';v.think=0}
 }
 function workCook(v,dt){
@@ -615,7 +630,7 @@ function sfx(n){
     case'fall':noise(.3,700,.08);tone(400,200,.2,'sine',.04);break;
     case'coin':tone(880,1320,.08,'sine',.04);break;
     case'ore':[988,1319,1568].forEach((f,k)=>tone(f,f,.09,'triangle',.05,k*.07));break;
-    case'splash':noise(.15,2200,.07);tone(500,900,.08,'sine',.03);break;
+    case'splash':tone(900,700,.05,'triangle',.04);tone(1100,900,.05,'triangle',.03,.06);noise(.08,1200,.04);break;
     case'eat':tone(300,250,.06,'square',.03);tone(330,260,.06,'square',.03,.12);break;
     case'mark':tone(660,880,.05,'square',.025);break;
     case'unmark':tone(500,330,.05,'square',.03);break;
@@ -692,7 +707,7 @@ function removeDrag(w,first){const t=toTile(w),i=t.y*W+t.x;if(!inb(t.x,t.y)||i==
 
 // minimap
 const mini=document.getElementById('mini'),mctx=mini.getContext('2d');mini.width=W;mini.height=H;const mimg=mctx.createImageData(W,H);
-const MCOL={water:[43,93,130],sand:[185,173,130],grass:[210,199,154],road:[170,170,160],tree:[90,150,60],rock:[233,170,180],stump:[170,180,120],build:[125,138,150],fire:[255,140,60]};
+const MCOL={water:[110,118,130],sand:[176,160,120],grass:[210,199,154],road:[170,170,160],tree:[90,150,60],rock:[233,170,180],stump:[170,180,120],build:[125,138,150],fire:[255,140,60]};
 function drawMini(){
   if(mini.hidden)return;const d=mimg.data;
   for(let i=0;i<N;i++){const g=S.ground[i],o=S.obj[i],b=bAt(i);let c;
@@ -763,7 +778,7 @@ function hud(){
 }
 const HINTS=[
   'Tap + next to a job to put your octopuses to work. Try Algae and Shells!',
-  'Work makes octopuses hungry. Assign a Fisher and a Cook to keep meals coming.',
+  'Work makes octopuses hungry. Send one to gather Mussels and one to Cook so meals keep coming.',
   'Save 12 algae and place a Den. Your octopuses will build it.',
   "Algae and shells don't come back, so your octopuses will roam further. A Clam cache saves long trips.",
   'Build a Tool rock so everyone works faster.',
@@ -832,7 +847,7 @@ function render(){
   const x0=Math.max(0,Math.floor(cam.x/T)-1),y0=Math.max(0,Math.floor(cam.y/T)-1),x1=Math.min(W-1,Math.ceil((cam.x+vw)/T)+1),y1=Math.min(H-1,Math.ceil((cam.y+vh)/T)+2);
   const wf=(time*1.5|0)%2;
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*W+x,g=S.ground[i],px=x*T,py=y*T;
-    if(g===G_WATER){ctx.drawImage(WATER[(wf+x+y)%2],px,py);if(y>0&&S.ground[i-W]!==G_WATER){ctx.fillStyle='#173a54';ctx.fillRect(px,py,16,3)}}
+    if(g===G_WATER){ctx.drawImage(SAND,px,py);ctx.drawImage(WATER[S.varr[i]%3],px,py)}
     else if(g===G_SAND)ctx.drawImage(SAND,px,py);
     else{const v=S.varr[i];ctx.drawImage(GRASS[v<12?v%4:v<14?4:5],px,py);
       if(g===G_ROAD){ctx.drawImage(ROAD,px,py);ctx.fillStyle='#a99f78';
@@ -920,10 +935,10 @@ function drawFolk(v){
     if(t.kind==='tree'){tx=t.i%W*T+8;ty=(t.i/W|0)*T+4;bend=-4}
     else if(t.kind==='rock'){tx=t.i%W*T+8;ty=(t.i/W|0)*T+10;bend=-2}
     else if(t.kind==='build'){tx=(t.b.x+t.b.w/2)*T;ty=(t.b.y+t.b.h)*T-8;bend=-5}
-    else if(t.kind==='fish'){tx=t.w%W*T+8;ty=(t.w/W|0)*T+9;wig=2.2;bend=-5}
+    else if(t.kind==='fish'){if(t.w!==t.spot){tx=t.w%W*T+8;ty=(t.w/W|0)*T+9;wig=1.6;bend=-4}else{tx=hx+v.face*7;ty=hy+5;wig=1.4;bend=2}}
     else{tx=t.b.x*T+16;ty=t.b.y*T+6;bend=-4}
     const full=t.kind==='fish'||t.kind==='cook'?1:reach;
-    let dx=tx-hx,dy=ty-hy;const L=Math.hypot(dx,dy)||1,maxL=t.kind==='fish'?22:15,len=Math.min(L,maxL)*full;dx=dx/L*len;dy=dy/L*len;
+    let dx=tx-hx,dy=ty-hy;const L=Math.hypot(dx,dy)||1,maxL=t.kind==='fish'?16:15,len=Math.min(L,maxL)*full;dx=dx/L*len;dy=dy/L*len;
     const tip=drawArm(hx,hy,hx+dx,hy+dy,bend,wig,v.col);
     if(t.kind==='cook'&&v.cooking)ctx.drawImage(MINI.fish,Math.round(tip.x)-4,Math.round(tip.y)-5);
     if(t.kind==='fish'&&v.catch>0)ctx.drawImage(MINI.fish,v.face>0?hx-9:hx+2,hy-3);
