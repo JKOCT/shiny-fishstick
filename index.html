@@ -92,11 +92,24 @@ body.tray #hint{bottom:166px}
 #evo{position:fixed;inset:0;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 #info[hidden],#note[hidden],#pick[hidden],#evo[hidden]{display:none}
 body.noted #hint{display:none}
+#quest{border-top:2px dashed var(--parch2);padding-top:6px;font-size:7px;line-height:1.6;display:flex;flex-direction:column;gap:3px;max-width:230px}
+#quest[hidden]{display:none}
+#quest .qt{font-size:8px;color:#2f7f8a}
+#quest .mb{align-self:flex-start;font-size:7px;padding:4px 6px;background:#ffd166}
+.job[hidden]{display:none}
+#puz{position:fixed;inset:0;background:rgba(10,25,40,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+#puz[hidden]{display:none}
+#puzBox{width:min(340px,100%);padding:12px;font-size:8px;line-height:1.7;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
+#puzGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:min(288px,100%);background:var(--ink);border:3px solid var(--ink)}
+#puzGrid canvas{width:100%;aspect-ratio:1;image-rendering:pixelated;cursor:pointer;display:block}
+#puzGrid canvas.pick{outline:3px solid #ffd166;outline-offset:-3px}
+#puzGrid.solved{gap:0}
 @media (prefers-reduced-motion:reduce){#hint{transition:none}}
 </style>
 <canvas id="c"></canvas>
 <div id="town" class="panel">
   <div id="res"></div>
+  <div id="quest" hidden></div>
   <div id="jobs"><button id="jtog" aria-expanded="true" aria-controls="jbody" title="Show or hide jobs"><span>Jobs</span><span id="jarr">▾</span></button><div id="jbody"><div id="jlist"></div><div id="jfoot"></div><button class="mb" id="evoB" title="See the traits your octopuses have discovered"><span id="evoT">Traits · Gen 1</span><span class="pts" id="evoP" hidden>1</span></button></div></div>
 </div>
 <button id="menuB" class="panel" title="Menu" aria-expanded="false" aria-controls="menu">☰</button>
@@ -127,6 +140,7 @@ body.noted #hint{display:none}
 <div id="info" class="panel" hidden></div>
 <div id="note" class="panel" hidden><span>A den is ready and there's food to spare. Start a family?</span><div class="mrow"><button class="mb" id="noteGo">Choose parents</button><button class="mb" id="noteLater">Later</button></div></div>
 <div id="evo" hidden><div id="evoBox" class="panel" role="dialog" aria-label="Evolution" style="width:min(380px,100%);max-height:calc(100% - 32px);overflow:auto;padding:12px;font-size:8px;line-height:1.7;display:flex;flex-direction:column;gap:6px"></div></div>
+<div id="puz" hidden><div id="puzBox" class="panel" role="dialog" aria-label="Beach puzzle"></div></div>
 <div id="pick" hidden><div id="pickBox" class="panel" role="dialog" aria-label="Choose parents"></div></div>
 
 <script>
@@ -371,8 +385,10 @@ MINI.fish=sprite(["..kkkk..",".kzxxXk.","kxxxXXk.",".kXXXk..","..kkk..."],5,{...
 MINI.meal=sprite([".kkkkkk.","kjjJjjJk","kkkkkkkk",".kuUuuk.","..kkkk.."],5,PAL,8);
 MINI.copper=sprite(["..kkkk..",".kWWzk..","kWzzzzk.","kzzzzAk.",".kkkkk.."],5,{...PAL,A:'#b8b8cc'},8);
 MINI.coal=sprite(["...kk...","..kWvk..",".kvvVVk.","kvvVVk..",".kkkk..."],5,PAL,8);
+MINI.piece=sprite(["..kk....",".kjjk...","kkjjkkk.","kjjjjjjk","kjjjjjk.","kkkkkk.."],6,PAL,8);
+ICON.explore=sprite([E16,E16,".....kkkkkk.....","....kWWWWWWk....","...kWWWrWWWWk...","...kWWWrrWWWk...","...kWWWrrWWWk...","...kWWWkkWWWk...","...kWWWqqWWWk...","...kWWWqqWWWk...","....kWWWqWWk....",".....kkkkkk.....",E16,E16,E16,E16],16);
 const RES=[['wood','Algae'],['stone','Shells'],['copper','Pearls'],['coal','Sea glass'],['fish','Mussels'],['meal','Meals']];
-const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',icon:ICON.stone},{id:'fish',name:'Mussels',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal}];
+const JOBS=[{id:'chop',name:'Algae',icon:ICON.wood},{id:'mine',name:'Shells',icon:ICON.stone},{id:'fish',name:'Mussels',icon:ICON.fish},{id:'cook',name:'Cook',icon:ICON.meal},{id:'explore',name:'Explore',icon:ICON.explore}];
 const ORE_CHANCE=.035, HUNGRY_AT=30;
 const BREED_MEALS=10, EGG_TIME=30, GROW_RATE=1/200; // eggs hatch after 30 game-seconds; babies take ~200 game-seconds to grow up
 const TRAITS=[ // individual traits, passed from parents to babies
@@ -384,7 +400,8 @@ const TRAITS=[ // individual traits, passed from parents to babies
   {id:'thrifty',icon:'\u{1F343}',name:'Slow metabolism',desc:'Gets hungry 28% slower',hint:'parents who went hungry'},
   {id:'social',icon:'\u{1F497}',name:'Gentle',desc:'Comfortable close to others, waves hello, works 20% faster next to a friend',hint:'friendly parents, and more likely every generation'},
   {id:'tools',icon:'\u{1F527}',name:'Tool use',desc:'Uses shells and stones as tools: all work 20% faster',hint:'hard-working parents, from generation 3'},
-  {id:'mimic',icon:'\u{1F3A8}',name:'Mimicry',desc:'Shifts color to blend in. Rare finds are 50% more likely',hint:'a rare surprise, from generation 4'}
+  {id:'mimic',icon:'\u{1F3A8}',name:'Mimicry',desc:'Shifts color to blend in. Rare finds are 50% more likely',hint:'a rare surprise, from generation 4'},
+  {id:'adventure',icon:'\u{1F9ED}',name:'Adventurer',desc:'Can go exploring beyond the reef and bring treasures home',hint:'solving the secret of the reef'}
 ];
 const TR=Object.fromEntries(TRAITS.map(t=>[t.id,t])),BASE_TRAITS=['algae','shells','mussels','cook','swift','thrifty'];
 const FOCUS_CHANCE=.75,BOTH_CHANCE=.5,ONE_CHANCE=.25;
@@ -413,7 +430,7 @@ function babyTraits(e){ // inherit from parents (a focused trait is very likely)
   for(const t of new Set([...mt,...ft])){const p=t===e.focus?FOCUS_CHANCE:mt.includes(t)&&ft.includes(t)?BOTH_CHANCE:ONE_CHANCE;if(rnd()<p)out.add(t)}
   const x={...newXp()};for(const o of[e.mx||{},e.fx||{}])for(const k in o)x[k]=(x[k]||0)+o[k];
   const g=e.gen||2,w={algae:x.chop,shells:x.mine,mussels:x.fish*2,cook:x.cook*2,swift:x.swim/8,thrifty:x.hungry/3+2,social:x.social*6+4*(g-1),
-    tools:g>=3?(x.chop+x.mine+x.fish)/5:0,mimic:g>=4?4:0};
+    tools:g>=3?(x.chop+x.mine+x.fish)/5:0,mimic:g>=4?4:0,adventure:S.adventure?40+x.swim/4:0};
   let total=0;for(const k in w)if(!out.has(k))total+=w[k];
   if(total>0&&rnd()<Math.min(.45,.12+total/400)){let r=rnd()*total;for(const k in w){if(out.has(k))continue;r-=w[k];if(r<=0){out.add(k);break}}}
   return[...out];
@@ -618,6 +635,7 @@ function updHatch(dt){
     h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
     if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen,multi:h.multi,col2:h.col2,col3:h.col3,sex:h.sex,traits:h.traits,mom:h.mom,dad:h.dad});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
       addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);
+      if(!S.babyTip){S.babyTip=1;after(1.5,()=>toast('Babies hide in the sand, so eels leave them alone. Once they grow up, they will need a den of their own.',8000))}
       for(const t of nv.traits)if(!S.found.includes(t)){S.found.push(t);const x=nv.x*T,y=nv.y*T-16;
         after(1.6,()=>{addFloat(x,y,'New trait: '+TR[t].name+'!',null,'#ffd166',4.5);if(AC&&!muted)[523,659,784,1047,1319].forEach((f,k)=>tone(f,f,.12,'triangle',.04,k*.08))})}if(onScreen(nv))sfx('pop');h.dead=true;hud()}
     else if(!h.stay&&h.t>=h.life)h.dead=true}
@@ -718,6 +736,7 @@ function think(v){
     if(v.job==='mine'&&findHarvest(v,O_ROCK))return;
     if(v.job==='fish'&&findFishing(v))return;
     if(v.job==='cook'&&S.res.fish>0&&goCook(v))return;
+    if(v.job==='explore'&&goExplore(v))return;
   }
   if(v.state==='idle')goRest(v);
   else{const f=fire();if(nearestOther(v,v.x,v.y)<personalSpace(v)*.9||Math.abs(v.x-(f.x+1))+Math.abs(v.y-(f.y+1))>10||rnd()<.015)goRest(v);else if(Math.abs(v.x-f.x-1)>.3)v.face=v.x<f.x+1?1:-1}
@@ -726,6 +745,8 @@ function dropTask(v){if(v.cooking){S.res.fish++;v.cooking=false}v.task=null;v.pa
 function updFolk(v,dt){
   if(v.state==='brood')return;
   if(v.arr){arrStep(v,dt);return}
+  if(v.state==='away'){v.awayT-=dt;if(v.awayT<=0){v.hidden=false;v.state='idle';v.think=0;v.carry=exploreLoot();S.explored=(S.explored||0)+1;
+    puff(v.x*T,v.y*T-6);addFloat(v.x*T,v.y*T-26,v.name+' is back! They '+TALES[rnd()*TALES.length|0]+'.',null,'#fff6c8',5);if(onScreen(v))sfx('pop');hud()}return}
   v.anim+=dt;
   if(v.size<1){v.size=Math.min(1,v.size+GROW_RATE*dt);if(v.size>=1){addFloat(v.x*T,v.y*T-26,v.name+' is all grown up!',null,'#fff6c8');if(onScreen(v))sfx('pop');hud()}}
   drain(v,dt*(.5+.5*v.size)); // everyone gets hungry over time, even when resting
@@ -735,7 +756,7 @@ function updFolk(v,dt){
   if(v.food<=0)v.xp.hungry+=dt;
   if(st==='idle'||st==='rest'){v.restT+=dt;v.think-=dt;if(v.think>0)return;v.think=.45+rnd()*.5;think(v);return}
   v.restT=0;
-  if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'){
+  if(st==='go'||st==='deliver'||st==='toEat'||st==='toRest'||st==='toDen'||st==='toMate'||st==='toEdge'){
     if(st==='go'&&!taskValid(v,v.task)){dropTask(v);return}
     const ox=v.x,oy=v.y,r=followPath(v,dt,2.6*(.6+.4*v.size)*(has(v,'swift')?1+.2*tp(v):1));const mv=Math.hypot(v.x-ox,v.y-oy);drain(v,mv*.15*v.size);v.xp.swim+=mv;
     if(st==='toDen'||st==='toMate'){const b=st==='toDen'?denOf(v):v.mateDen;
@@ -749,6 +770,7 @@ function updFolk(v,dt){
     if(st==='go'){v.state='work';v.hitT=0;v.fishT=0;const t=v.task;
       const cx=t.kind==='build'||t.kind==='cook'?t.b.x+t.b.w/2:t.kind==='fish'?t.w%W+.5:t.i%W+.5;if(Math.abs(cx-v.x)>.1)v.face=cx>v.x?1:-1}
     else if(st==='deliver')deposit(v);
+    else if(st==='toEdge'){v.state='away';v.awayT=EXPLORE_TIME;v.hidden=true;puff(v.x*T,v.y*T-6);if(onScreen(v))addFloat(v.x*T,v.y*T-26,v.name+' set off on an adventure!',null,'#fff6c8',3.5)}
     else if(st==='toEat'){v.state='eat';v.hitT=0}
     else{v.state='rest';v.think=.3}
     return}
@@ -760,14 +782,14 @@ function updFolk(v,dt){
     const iv=t.kind==='build'?HIT:GATHER_HIT;v.hitT+=dt*work;if(v.hitT<iv)return;v.hitT-=iv;
     if(t.kind==='build'){drain(v,.5);buildHit(t.b,v);return}
     drain(v,.8);v.xp[t.kind==='tree'?'chop':'mine']++;const y=hitTile(t.i,v);
-    if(y){v.carry=y;v.task=null;v.state='idle';v.think=0}
+    if(y){v.carry=y;v.task=null;v.state='idle';v.think=0;maybePiece(v)}
   }
 }
 function workFish(v,dt){
   v.hitT+=dt;v.fishT+=dt;
   if(v.hitT>=1.2){v.hitT=0;drain(v,.3);
     if(onScreen(v)&&rnd()<.6)burst(v.x*T+v.face*6,v.y*T-2,3,['#d2c79a','#bfb487']);
-    if(rnd()<.22){v.catch++;v.xp.fish++;if(has(v,'mussels')&&rnd()<.06*(has(v,'mimic')?1.5:1)){v.pearls=(v.pearls||0)+1;if(onScreen(v)){sfx('ore');addFloat(v.x*T,v.y*T-34,'A pearl!','copper','#ffd38a')}}
+    if(rnd()<.22){v.catch++;v.xp.fish++;maybePiece(v);if(has(v,'mussels')&&rnd()<.06*(has(v,'mimic')?1.5:1)){v.pearls=(v.pearls||0)+1;if(onScreen(v)){sfx('ore');addFloat(v.x*T,v.y*T-34,'A pearl!','copper','#ffd38a')}}
       if(onScreen(v)){burst(v.x*T+v.face*6,v.y*T-4,8,['#d2c79a','#8fa3c8','#3b4a6b']);sfx('splash');addFloat(v.x*T,v.y*T-26,'+1','fish')}}}
   if(v.catch>=3||(v.fishT>30&&v.catch>0)){v.carry={fish:v.catch};if(v.pearls){v.carry.copper=v.pearls;v.pearls=0}v.catch=0;v.task=null;v.state='idle';v.think=0}
 }
@@ -796,8 +818,8 @@ function buildHit(b,who){
 }
 function assignJob(job,delta){
   if(delta>0){
-    const cand=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)).sort((a,b)=>skill(b,job)-skill(a,job)||(a.carry?1:0)-(b.carry?1:0));
-    if(!cand.length){sfx('no');return}cand[0].job=job;cand[0].think=0;sfx('mark');
+    const cand=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)&&(job!=='explore'||has(v,'adventure'))).sort((a,b)=>skill(b,job)-skill(a,job)||(a.carry?1:0)-(b.carry?1:0));
+    if(!cand.length){sfx('no');if(job==='explore')toast('Only octopuses with the Adventurer trait can explore.');return}cand[0].job=job;cand[0].think=0;sfx('mark');
   }else{
     const cand=folk.filter(v=>v.job===job).sort((a,b)=>skill(a,job)-skill(b,job)||(a.carry?1:0)-(b.carry?1:0)||(a.state==='work'?1:0)-(b.state==='work'?1:0));
     if(!cand.length)return;cand[0].job='idle';sfx('unmark');
@@ -1001,7 +1023,7 @@ const jlist=document.getElementById('jlist'),jobsBox=document.getElementById('jo
 function setJobsMin(m){jobsBox.classList.toggle('min',m);jtog.setAttribute('aria-expanded',!m);document.getElementById('jarr').textContent=m?'\u25b8':'\u25be';try{localStorage.setItem(KEY+'-jobsmin',m?'1':'0')}catch(e){}}
 jtog.onclick=()=>{setJobsMin(!jobsBox.classList.contains('min'));hud()};
 try{if(localStorage.getItem(KEY+'-jobsmin')==='1')setJobsMin(true)}catch(e){}
-jlist.innerHTML=JOBS.map(j=>`<div class="job"><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer on ${j.name}">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More on ${j.name}">+</button></div>`).join('');
+jlist.innerHTML=JOBS.map(j=>`<div class="job" id="jrow-${j.id}"${j.id==='explore'?' hidden':''}><img src="${j.icon.toDataURL()}" alt=""><span>${j.name}</span><button class="jb" data-j="${j.id}" data-d="-1" aria-label="Fewer on ${j.name}">-</button><span class="jc" id="jc-${j.id}">0</span><button class="jb" data-j="${j.id}" data-d="1" aria-label="More on ${j.name}">+</button></div>`).join('');
 jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
 // menu
 const menu=document.getElementById('menu'),menuB=document.getElementById('menuB'),mapB=document.getElementById('mapb');
@@ -1020,6 +1042,81 @@ const resetB=document.getElementById('reset');let resetArm=0;
 resetB.onclick=()=>{
   if(Date.now()-resetArm>3000){resetArm=Date.now();resetB.textContent='Tap again to erase town';setTimeout(()=>{resetB.textContent='New map'},3000);return}
   resetArm=0;resetB.textContent='New map';newGame();save();hud();closeMenus();showIntro()};
+// ================= quests =================
+const PIECES=9,PIECE_CHANCE=.06,EXPLORE_TIME=60;
+const QUESTS=[
+  {title:'Build enough dens to protect everyone',desc:'Eels hunt grown-ups without a den.',prog:()=>{const a=folk.filter(adult),h=a.filter(v=>{const d=denOf(v);return d&&d.done}).length;return[h,a.length]},done:()=>{const a=folk.filter(adult);return a.length>0&&a.every(v=>{const d=denOf(v);return d&&d.done})}},
+  {title:'Keep going! There must be some secrets around here...',desc:'Gatherers sometimes find puzzle pieces.',prog:()=>[S.pieces||0,PIECES],done:()=>!!S.puzzleDone},
+  {title:'Raise an adventurer',desc:'The 🧭 Adventurer trait can now appear in babies, especially from parents who swim far.',prog:()=>null,done:()=>folk.some(v=>has(v,'adventure'))},
+  {title:'Send an adventurer exploring',desc:'Put an adventurer on the Explore job.',prog:()=>null,done:()=>(S.explored||0)>0}
+];
+const questEl=document.getElementById('quest');
+function renderQuest(){
+  const q=QUESTS[S.quest||0];if(!q){questEl.hidden=true;return}
+  questEl.hidden=false;const pr=q.prog();
+  questEl.innerHTML=`<div class="qt">Quest</div><div><b>${q.title}</b></div><div style="color:var(--muted)">${q.desc}</div>`+
+    (pr?`<div>${pr[0]} / ${pr[1]}${S.quest===1?' puzzle pieces':' with a den'}</div><div class="fbar"><i style="width:${pr[1]?Math.round(Math.min(1,pr[0]/pr[1])*100):0}%"></i></div>`:'')+
+    (S.quest===1&&(S.pieces||0)>=PIECES?`<button class="mb" id="puzGo">Assemble the puzzle</button>`:'');
+  const g=document.getElementById('puzGo');if(g)g.onclick=()=>{ensureAudio();openPuzzle()};
+}
+function checkQuest(){
+  const q=QUESTS[S.quest||0];if(!q||!q.done())return;
+  S.quest=(S.quest||0)+1;const f=fire();
+  addFloat((f.x+1)*T,f.y*T-14,'Quest complete!',null,'#ffd166',4);
+  if(AC&&!muted)[523,659,784,1047].forEach((n,k)=>tone(n,n,.14,'triangle',.045,k*.1));
+  const nx=QUESTS[S.quest];if(nx)after(2.5,()=>toast('New quest: '+nx.title,4500));else after(2.5,()=>toast('All quests done for now!',4000));
+}
+function maybePiece(v){ // once the secret quest starts, gathering can turn up puzzle pieces
+  if((S.quest||0)!==1||(S.pieces||0)>=PIECES||rnd()>=PIECE_CHANCE)return;
+  S.pieces=(S.pieces||0)+1;v.life.pieces=(v.life.pieces||0)+1;
+  if(onScreen(v))addFloat(v.x*T,v.y*T-34,'A puzzle piece! ('+S.pieces+'/'+PIECES+')','piece','#ffd166',3.5);
+  if(AC&&!muted)[880,1175,1568].forEach((n,k)=>tone(n,n,.1,'triangle',.04,k*.07));
+  if(S.pieces>=PIECES)after(1,()=>toast('All '+PIECES+' pieces found! Assemble the puzzle from the quest panel.',5000));
+  hud();
+}
+// ----- the beach puzzle -----
+const BEACH=(()=>{const c=mk(48,48),x=c.getContext('2d');const R=(a,b,w,h,col)=>{x.fillStyle=col;x.fillRect(a,b,w,h)};
+  ['#9fd8f5','#a9ddf6','#b6e3f8','#c4e9fa','#d2eefb'].forEach((col,k)=>R(0,k*4,48,4,col));
+  R(34,4,8,8,'#ffe066');R(35,3,6,10,'#ffe066');R(33,5,10,6,'#ffe066');R(36,5,3,2,'#fff6b0');
+  R(6,6,8,2,'#ffffff');R(8,5,5,1,'#ffffff');R(22,9,7,2,'#ffffff');
+  R(0,20,48,10,'#3f93c9');R(0,20,48,1,'#7fc4ea');for(const[a,b]of[[4,23],[18,25],[30,22],[40,27],[10,28]])R(a,b,5,1,'#8fd0f0');
+  R(0,30,48,2,'#ffffff');R(0,32,48,16,'#ecd9a0');for(let k=0;k<26;k++)R((k*17)%48,33+(k*7)%15,1,1,k%2?'#d8c27f':'#f7e9bd');
+  R(7,14,2,20,'#8a5a34');R(8,14,1,20,'#a8713f');for(let k=0;k<20;k+=3)R(7,14+k,2,1,'#6b4226');
+  for(const[a,b,w]of[[1,12,7],[9,12,7],[3,10,5],[10,10,5],[5,9,6]])R(a,b,w,2,'#3f8f3a');R(2,13,3,1,'#2f6e2a');R(12,13,3,1,'#2f6e2a');R(7,13,2,2,'#7a4b2a');
+  R(30,38,7,5,'#1d2b3a');R(31,38,5,4,'#f28c4a');R(32,39,1,1,'#ffffff');R(34,39,1,1,'#ffffff');R(30,43,1,1,'#f28c4a');R(32,43,1,1,'#f28c4a');R(34,43,1,1,'#f28c4a');R(36,43,1,1,'#f28c4a');
+  R(18,40,4,3,'#f2a7b5');R(19,41,2,1,'#ffffff');R(42,42,3,2,'#e0533d');R(41,43,1,1,'#e0533d');R(45,43,1,1,'#e0533d');
+  return c})();
+const puzEl=document.getElementById('puz'),puzBox=document.getElementById('puzBox');let puzOrder=[],puzPick=-1;
+function openPuzzle(){
+  puzOrder=[...Array(9).keys()];do{for(let i=8;i>0;i--){const j=rnd()*(i+1)|0;[puzOrder[i],puzOrder[j]]=[puzOrder[j],puzOrder[i]]}}while(puzOrder.every((v,i)=>v===i));
+  puzPick=-1;puzEl.hidden=false;renderPuzzle();
+}
+function renderPuzzle(){
+  const solved=puzOrder.every((v,i)=>v===i);
+  puzBox.innerHTML=`<h2 style="font-size:10px;margin:0">${solved?'A beach!':'The puzzle pieces'}</h2>`+
+    `<div>${solved?'Somewhere far beyond the reef, the sea meets the land. Some octopuses will want to see it for themselves.':'Tap two pieces to swap them. Put the picture back together.'}</div>`+
+    `<div id="puzGrid" class="${solved?'solved':''}">${puzOrder.map((p,i)=>`<canvas width="16" height="16" data-i="${i}" class="${i===puzPick?'pick':''}"></canvas>`).join('')}</div>`+
+    (solved?`<div style="color:#2f7f8a">Adventuring unlocked! The 🧭 Adventurer trait can now appear in babies.</div><button class="mb" id="puzDone">Wonderful</button>`:`<button class="mb" id="puzLater">Later</button>`);
+  puzBox.querySelectorAll('canvas').forEach(c=>{const i=+c.dataset.i,p=puzOrder[i],x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(BEACH,(p%3)*16,(p/3|0)*16,16,16,0,0,16,16)});
+}
+puzBox.addEventListener('click',e=>{
+  const c=e.target.closest('canvas');
+  if(c&&!puzOrder.every((v,i)=>v===i)){const i=+c.dataset.i;
+    if(puzPick<0){puzPick=i;sfx('mark')}else if(puzPick===i)puzPick=-1;else{[puzOrder[i],puzOrder[puzPick]]=[puzOrder[puzPick],puzOrder[i]];puzPick=-1;sfx('build');
+      if(puzOrder.every((v,k)=>v===k)){S.puzzleDone=1;S.adventure=1;S.found=S.found||[];if(AC&&!muted)[523,659,784,1047,1319,1568].forEach((n,k)=>tone(n,n,.16,'triangle',.045,k*.11));checkQuest();hud()}}
+    renderPuzzle();return}
+  if(e.target.id==='puzLater'||e.target.id==='puzDone')puzEl.hidden=true;
+});
+// ----- exploring beyond the reef -----
+const TALES=['followed a sea turtle for miles','found a sunken boat','saw a whale sing','danced with jellyfish','got lost in a forest of giant kelp','met a very old crab','saw the sun from just below the waves','found a cave full of glowing shrimp'];
+function goExplore(v){
+  if(!has(v,'adventure'))return false;
+  const f=fire(),cx=f.x+1,cy=f.y+1;
+  for(let k=0;k<30;k++){const a=rnd()*6.28,d=14+rnd()*8,x=Math.floor(cx+Math.cos(a)*d),y=Math.floor(cy+Math.sin(a)*d*.8);if(!walkXY(x,y))continue;
+    const t=y*W+x,r=bfs(tileOf(v),i=>i===t?1:null);if(r){v.path=r.path;v.state='toEdge';v.task=null;return true}}
+  return false;
+}
+function exploreLoot(){const l={};const add=(k,n)=>l[k]=(l[k]||0)+n;add(rnd()<.5?'copper':'coal',1+(rnd()*2|0));if(rnd()<.6)add('stone',2+(rnd()*4|0));if(rnd()<.4)add('fish',2+(rnd()*3|0));if(rnd()<.25)add(rnd()<.5?'copper':'coal',1);return l}
 function hud(){
   for(const[k]of RES){document.getElementById('n-'+k).textContent=S.res[k];
     if(k==='copper'||k==='coal')document.getElementById('r-'+k).hidden=S.res[k]===0}
@@ -1029,7 +1126,8 @@ function hud(){
   const hungry=folk.filter(v=>v.food<=0).length,low=folk.filter(v=>v.food>0&&v.food<HUNGRY_AT).length;
   const jf=document.getElementById('jfoot'),warn=hungry?`${hungry} starving!`:low&&S.res.meal+S.res.fish===0?'No food left':'';
   jf.textContent=warn||((idle?`${idle} idle`:'Everyone is busy')+(growing?` · ${growing} growing`:''));jf.classList.toggle('bad',!!warn);
-  renderInfo();checkBreedNote();
+  renderInfo();checkBreedNote();renderQuest();
+  {const jr=document.getElementById('jrow-explore');if(jr)jr.hidden=!S.adventure;const idleAdv=folk.some(v=>v.job==='idle'&&adult(v)&&!breeding(v)&&has(v,'adventure'));const pb=jlist.querySelector('.jb[data-j="explore"][data-d="1"]');if(pb)pb.disabled=!idleAdv}
   jtog.querySelector('span').textContent=jobsBox.classList.contains('min')?('Jobs \u00b7 '+(jf.classList.contains('bad')?jf.textContent:(idle?idle+' idle':'busy'))+''):'Jobs';
   document.getElementById('evoT').textContent='Traits \u00b7 Gen '+colonyGen();document.getElementById('evoP').hidden=true;
   if(!tray.hidden)tray.querySelectorAll('.bb').forEach(b=>{const id=b.dataset.b,d=BUILD[id];
@@ -1152,13 +1250,13 @@ function checkHint(){
 // ================= save / load =================
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
-  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
   folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
     b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0,mt:b.eggs.mt||[],ft:b.eggs.ft||[],mx:b.eggs.mx||{},fx:b.eggs.fx||{},fo:b.eggs.focus||null,mn:b.eggs.mname||null,fn:b.eggs.fname||null}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
-    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
   const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
@@ -1203,7 +1301,7 @@ toastEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom
 document.body.appendChild(toastEl);
 const tipCss=document.createElement('style');tipCss.textContent='body.btip #hint,body.btip #note{display:none!important}body.tray #btip{bottom:176px!important}body.tray #info:not(.sheet){display:none!important}body.tray #eel.compact{bottom:auto!important}body.eel #btip{bottom:150px!important}body.eel #toast{bottom:200px!important}body.sheetOpen #eel,body.sheetOpen #btip,body.sheetOpen #hint{display:none!important}#eel.compact{top:54px!important;bottom:auto!important;left:auto!important;right:8px!important;transform:none!important;font-size:7px!important;line-height:1.7!important;padding:5px 7px!important;max-width:150px!important;opacity:.95}body.eelc #mini{margin-top:34px}#menu:not([hidden])~#eel{display:none!important}';document.head.appendChild(tipCss);
 let toastTm=null;
-function toast(msg){toastEl.textContent=msg;toastEl.hidden=false;clearTimeout(toastTm);toastTm=setTimeout(()=>{toastEl.hidden=true},2600)}
+function toast(msg,ms=2600){toastEl.textContent=msg;toastEl.hidden=false;clearTimeout(toastTm);toastTm=setTimeout(()=>{toastEl.hidden=true},ms)}
 function showBTip(){const d=BUILD[tool];btipEl.hidden=!d;document.body.classList.toggle('btip',!!d);if(d)btipEl.innerHTML=`<b>${d.name}</b><br>${BTIP[tool]||''}`}
 function denTooClose(x,y){return S.buildings.some(b=>b&&b.type==='house'&&Math.max(Math.abs(b.x-x),Math.abs(b.y-y))<5)}
 function crowdedAt(v,i){const x=i%W+.5,y=(i/W|0)+.65,sp=Math.max(1.5,Math.min(2.2,personalSpace(v)));
@@ -1232,7 +1330,7 @@ function drawHold(){if(!holdInfo)return;const b=bAt(holdInfo.i),p=Math.min(1,(ti
 // ----- eel attacks: octopuses with a den hide inside; one without a den may be caught -----
 let eels=[],eelNext=0;
 function eelAttack(){
-  const live=folk.filter(v=>v.state!=='brood'&&!v.eel);
+  const live=folk.filter(v=>v.state!=='brood'&&!v.eel&&v.state!=='away');
   const housed=live.filter(v=>denOf(v)&&denOf(v).done&&!breeding(v));
   const prey=live.filter(v=>adult(v)&&!breeding(v)&&!(denOf(v)&&denOf(v).done));
   for(const v of housed)if(onScreen(v))addFloat(v.x*T,v.y*T-26,'!',null,'#ffb4a8',1.5);
@@ -1335,7 +1433,7 @@ function update(dt){
   tick+=dt;if(tick>=1){tick-=1;
     for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
     S.regrowT=(S.regrowT||0)+1;if(S.regrowT>=300){S.regrowT=0;regrow()}
-    claimDens();checkHint();hintT++;eelStep();hud();
+    claimDens();checkHint();checkQuest();hintT++;eelStep();hud();
     swapT=(swapT||0)+1;if(swapT>=8){swapT=0;swapJobs()}
     const friendly=colonyGen()>=3;for(const a of folk)for(const c of folk){if(!friendly&&!has(a,'social')&&!has(c,'social'))continue;if(a.id>=c.id||a.state==='brood'||c.state==='brood')continue;
       if(time>a.greetT&&time>c.greetT&&Math.hypot(a.x-c.x,a.y-c.y)<1.6){a.greetT=c.greetT=time+25+rnd()*20;a.xp.social++;c.xp.social++;
