@@ -635,7 +635,7 @@ function updHatch(dt){
     h.x+=h.vx*dt+Math.sin(h.ph*1.7)*dt*2;h.y+=h.vy*dt;
     if(h.stay&&h.t>=h.life){const nv=spawnFolk(false,'idle',100,{x:h.x/T,y:h.y/T+.3,size:.4,col:h.col,gen:h.gen,multi:h.multi,col2:h.col2,col3:h.col3,sex:h.sex,traits:h.traits,mom:h.mom,dad:h.dad});if(Math.abs(nv.x-h.x/T)>1.5){nv.x=h.door.x;nv.y=h.door.y}
       addFloat(nv.x*T,nv.y*T-16,'Hi, I\'m '+nv.name+'!',null,'#fff6c8',3.5);
-      if(!S.babyTip){S.babyTip=1;after(1.5,()=>toast('Babies hide in the sand, so eels leave them alone. Once they grow up, they will need a den of their own.',8000))}
+      if(!S.babyTip){S.babyTip=1;S.firstBaby=nv.name;S.pearlT=0;after(1.5,()=>toast('Babies hide in the sand, so eels leave them alone. Once they grow up, they will need a den of their own.',8000))}
       for(const t of nv.traits)if(!S.found.includes(t)){S.found.push(t);const x=nv.x*T,y=nv.y*T-16;
         after(1.6,()=>{addFloat(x,y,'New trait: '+TR[t].name+'!',null,'#ffd166',4.5);if(AC&&!muted)[523,659,784,1047,1319].forEach((f,k)=>tone(f,f,.12,'triangle',.04,k*.08))})}if(onScreen(nv))sfx('pop');h.dead=true;hud()}
     else if(!h.stay&&h.t>=h.life)h.dead=true}
@@ -1250,13 +1250,13 @@ function checkHint(){
 // ================= save / load =================
 function save(){try{const ix=new Map(folk.map((v,i)=>[v.id,i]));
   localStorage.setItem(KEY,JSON.stringify({v:3,seed:S.seed,ground:Array.from(S.ground),obj:Array.from(S.obj),hp:Array.from(S.hp),
-  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
+  timer:Array.from(S.timer,t=>Math.round(t)),varr:Array.from(S.varr),res:S.res,step:S.step,cooked:S.cooked,bred:S.bred||0,tapped:S.tapped||0,found:S.found||[],eel:S.eel||0,quest:S.quest||0,pieces:S.pieces||0,pz:S.puzzleDone||0,adv:S.adventure||0,expl:S.explored||0,btip:S.babyTip||0,fb:S.firstBaby||null,pt:S.pearlT||0,ptip:S.pearlTip||0,was:Array.from(S.was||[]),rg:Math.round(S.regrowT||0),
   folk:folk.map(v=>({j:v.job,f:Math.round(v.food),n:v.name,s:v.sex,c:v.col,z:+v.size.toFixed(3),x:+v.x.toFixed(2),y:+v.y.toFixed(2),su:v.summer?1:0,g:v.gen||1,mu:v.multi?[v.col2,v.col3]:0,tr:v.traits,xp:v.xp,li:v.life,mo:v.mom,da:v.dad,ki:v.kids||0,lt:v.lost||0,sd:Math.max(0,Math.round((v.sadUntil||0)-time))})),
   cam:[cam.x,cam.y],b:S.buildings.filter(Boolean).map(b=>[b.type,b.x,b.y,b.done?1:0,b.prog,ix.has(b.owner)?ix.get(b.owner):-1,
     b.eggs&&ix.has(b.eggs.mother)?{m:ix.get(b.eggs.mother),c:b.eggs.fcol,t:+b.eggs.t.toFixed(1),g:b.eggs.gen||2,mm:b.eggs.mm?1:0,fm:b.eggs.fm?1:0,mt:b.eggs.mt||[],ft:b.eggs.ft||[],mx:b.eggs.mx||{},fx:b.eggs.fx||{},fo:b.eggs.focus||null,mn:b.eggs.mname||null,fn:b.eggs.fname||null}:null])}))}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||d.v!==3||d.ground.length!==N)return false;
   S={seed:d.seed,ground:Uint8Array.from(d.ground),obj:Uint8Array.from(d.obj),hp:Uint8Array.from(d.hp),timer:Float32Array.from(d.timer),varr:Uint8Array.from(d.varr),
-    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
+    bmap:new Int16Array(N),buildings:[],res:Object.assign({wood:0,stone:0,copper:0,coal:0,fish:0,meal:0},d.res),step:d.step||0,cooked:d.cooked||0,bred:d.bred||0,tapped:d.tapped||0,found:d.found||[],eel:d.eel||0,quest:d.quest||0,pieces:d.pieces||0,puzzleDone:d.pz||0,adventure:d.adv||0,explored:d.expl||0,babyTip:d.btip||0,firstBaby:d.fb||null,pearlT:d.pt||0,pearlTip:d.ptip||0,was:d.was&&d.was.length===N?Uint8Array.from(d.was):new Uint8Array(N),regrowT:d.rg||0};
   const pend=[];for(const[t,x,y,dn,pr,ow,eg]of d.b)if(BUILD[t]){const b=addBuilding(t,x,y,!!dn,pr);pend.push([b,ow,eg])}
   if(!fire())return false;
   folk=[];const list=d.folk&&d.folk.length?d.folk:[['idle',100],['idle',100],['idle',100],['idle',100],['idle',100]],sexes=['f','m','f','m','f'];
@@ -1434,7 +1434,10 @@ function update(dt){
   tick+=dt;if(tick>=1){tick-=1;
     for(let i=0;i<N;i++){if(S.obj[i]!==O_RUBBLE)continue;S.timer[i]-=1;if(S.timer[i]<=0)S.obj[i]=O_NONE}
     S.regrowT=(S.regrowT||0)+1;if(S.regrowT>=300){S.regrowT=0;regrow()}
-    claimDens();checkHint();checkQuest();hintT++;eelStep();hud();
+    claimDens();checkHint();checkQuest();
+    if(S.babyTip&&!S.pearlTip){S.pearlT=(S.pearlT||0)+1;if(S.pearlT>=30){S.pearlTip=1; // about 30s after the first baby: a hint that pearls can be worked on
+      const b=folk.find(v=>v.name===S.firstBaby)||folk.find(v=>!adult(v))||folk[0];
+      if(b){toast('Hmm... '+b.name+' rubbed the pearl in the sand and made it shinier! What else could we do with these?',9000);if(onScreen(b))parts.push({x:b.x*T,y:b.y*T-18*b.size,vx:0,vy:-10,g:0,life:1.6,max:1.6,col:'#ffffff',sz:2,bub:true})}}}hintT++;eelStep();hud();
     swapT=(swapT||0)+1;if(swapT>=8){swapT=0;swapJobs()}
     const friendly=colonyGen()>=3;for(const a of folk)for(const c of folk){if(!friendly&&!has(a,'social')&&!has(c,'social'))continue;if(a.id>=c.id||a.state==='brood'||c.state==='brood')continue;
       if(time>a.greetT&&time>c.greetT&&Math.hypot(a.x-c.x,a.y-c.y)<1.6){a.greetT=c.greetT=time+25+rnd()*20;a.xp.social++;c.xp.social++;
