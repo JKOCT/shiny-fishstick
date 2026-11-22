@@ -609,7 +609,10 @@ const sndB=document.getElementById('snd');
 function toggleMute(){muted=!muted;sndB.textContent=muted?'×':'♪'}
 sndB.onclick=()=>{ensureAudio();toggleMute()};
 document.getElementById('hlp').onclick=()=>document.getElementById('help').classList.toggle('show');
-document.getElementById('reset').onclick=()=>{if(confirm('Start a brand new map? Your town will be lost.')){newGame();save();hud();document.getElementById('help').classList.remove('show')}};
+const resetB=document.getElementById('reset');let resetArm=0;
+resetB.onclick=()=>{
+  if(Date.now()-resetArm>3000){resetArm=Date.now();resetB.textContent='Tap again to erase town';setTimeout(()=>{resetB.textContent='New map'},3000);return}
+  resetArm=0;resetB.textContent='New map';newGame();save();hud();document.getElementById('help').classList.remove('show')};
 function hud(){
   document.getElementById('n-wood').textContent=S.res.wood;
   document.getElementById('n-stone').textContent=S.res.stone;
