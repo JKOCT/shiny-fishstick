@@ -39,7 +39,7 @@ button:focus-visible{outline:2px solid #fff;outline-offset:1px}
 #mini[hidden]{display:none}
 /* bottom: three tools + build tray */
 #bar{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px}
-.tool{width:78px;height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:2px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2),inset 2px 2px 0 var(--hi)}
+.tool{min-width:70px;width:auto;white-space:nowrap;height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:2px 8px;background:var(--parch);border:3px solid var(--ink);font-size:7px;cursor:pointer;box-shadow:inset -2px -2px 0 var(--parch2),inset 2px 2px 0 var(--hi)}
 .tool img{height:24px;image-rendering:pixelated}
 .tool.sel{background:var(--sel)}
 #tray{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
@@ -1048,7 +1048,8 @@ function syncSel(){
 }
 function setTool(id){tool=id;syncSel();cv.style.cursor=id==='look'?'grab':'crosshair';showBTip()}
 const resEl=document.getElementById('res');
-resEl.innerHTML=RES.filter(([k])=>k==='wood'||k==='stone').map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
+const TOP_RES=['wood','stone','fish','meal'];
+resEl.innerHTML=RES.filter(([k])=>TOP_RES.includes(k)).map(([k,n])=>`<div class="r" id="r-${k}" title="${n}"><img src="${iconURL[k]}" alt="${n}"><span id="n-${k}">0</span></div>`).join('');
 const jlist=document.getElementById('jlist'),jobsBox=document.getElementById('jobs'),jtog=document.getElementById('jtog');
 function setJobsMin(m){jobsBox.classList.toggle('min',m);jtog.setAttribute('aria-expanded',!m);document.getElementById('jarr').textContent=m?'\u25b8':'\u25be';try{localStorage.setItem(KEY+'-jobsmin',m?'1':'0')}catch(e){}}
 jtog.onclick=()=>{setJobsMin(!jobsBox.classList.contains('min'));hud()};
@@ -1057,7 +1058,11 @@ jlist.innerHTML=JOBS.map(j=>`<div class="job" id="jrow-${j.id}"${j.id==='explore
 jlist.addEventListener('click',e=>{const b=e.target.closest('.jb');if(!b)return;ensureAudio();assignJob(b.dataset.j,+b.dataset.d)});
 // menu
 const menu=document.getElementById('menu'),menuB=document.getElementById('menuB'),mapB=document.getElementById('mapb');
-function placeMini(){mini.style.top=menu.hidden?'54px':(menu.getBoundingClientRect().bottom+8)+'px'}
+function placeMini(){ // under the menu button, or below the town panel if they would overlap
+  let top=menu.hidden?54:menu.getBoundingClientRect().bottom+8;
+  if(!mini.hidden){const tw=document.getElementById('town').getBoundingClientRect(),mw=mini.offsetWidth||160;
+    if(tw.right+8>innerWidth-8-mw&&tw.bottom+8>top)top=Math.max(top,tw.bottom+8)}
+  mini.style.top=top+'px'}
 menuB.onclick=()=>{ensureAudio();menu.hidden=!menu.hidden;menuB.setAttribute('aria-expanded',!menu.hidden);placeMini()};
 function closeMenus(){closeRes();menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini();closeTray()}
 cv.addEventListener('pointerdown',()=>{if(!menu.hidden){menu.hidden=true;menuB.setAttribute('aria-expanded','false');placeMini()}},true);
@@ -1151,7 +1156,7 @@ function goExplore(v){
 }
 function exploreLoot(){const l={};const add=(k,n)=>l[k]=(l[k]||0)+n;add(rnd()<.5?'copper':'coal',1+(rnd()*2|0));if(rnd()<.6)add('stone',2+(rnd()*4|0));if(rnd()<.4)add('fish',2+(rnd()*3|0));if(rnd()<.25)add(rnd()<.5?'copper':'coal',1);return l}
 function hud(){
-  for(const k of['wood','stone'])document.getElementById('n-'+k).textContent=S.res[k]||0;
+  for(const k of TOP_RES)document.getElementById('n-'+k).textContent=S.res[k]||0;placeMini();
   renderRes();
   const idle=folk.filter(v=>v.job==='idle'&&adult(v)&&!breeding(v)).length,growing=folk.filter(v=>!adult(v)).length;
   for(const j of JOBS)document.getElementById('jc-'+j.id).textContent=folk.filter(v=>v.job===j.id).length;
